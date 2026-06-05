@@ -1,0 +1,106 @@
+// _tokens.scss — the full token contract. Components consume these ONLY.
+// Override any --dl-* property in your app to re-skin the scheduler.
+
+.dl-scheduler {
+  // ---- Color (semantic) -------------------------------------------------
+  --dl-bg: #ffffff;
+  --dl-bg-subtle: #f6f7f9;
+  --dl-surface: #ffffff;
+  --dl-surface-raised: #ffffff;
+
+  --dl-text: #1c2024;
+  --dl-text-muted: #5b6470;
+  --dl-text-faint: #9aa3ad;
+
+  --dl-border: #e6e8ec;
+  --dl-border-strong: #cdd2d9;
+
+  --dl-accent: #2563eb;
+  --dl-accent-contrast: #ffffff;
+  --dl-accent-soft: color-mix(in srgb, var(--dl-accent) 12%, transparent);
+
+  --dl-today: color-mix(in srgb, var(--dl-accent) 8%, transparent);
+  --dl-weekend: #fafbfc;
+  --dl-now-line: #ef4444;
+  --dl-focus-ring: color-mix(in srgb, var(--dl-accent) 60%, transparent);
+
+  --dl-danger: #dc2626;
+  --dl-success: #16a34a;
+  --dl-warning: #d97706;
+
+  --dl-event-default-bg: color-mix(in srgb, var(--dl-accent) 14%, var(--dl-surface));
+  --dl-event-default-text: var(--dl-text);
+
+  // ---- Typography -------------------------------------------------------
+  --dl-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --dl-font-num: ui-monospace, "SF Mono", "IBM Plex Mono", Menlo, monospace;
+
+  --dl-fs-xs: 11px;
+  --dl-fs-sm: 12px;
+  --dl-fs-md: 13px;
+  --dl-fs-lg: 15px;
+  --dl-fs-xl: 18px;
+
+  --dl-fw-regular: 400;
+  --dl-fw-medium: 500;
+  --dl-fw-semibold: 600;
+
+  --dl-lh-tight: 1.2;
+  --dl-lh-normal: 1.45;
+
+  // ---- Spacing (4px scale) ---------------------------------------------
+  --dl-space-0: 0;
+  --dl-space-1: 2px;
+  --dl-space-2: 4px;
+  --dl-space-3: 8px;
+  --dl-space-4: 12px;
+  --dl-space-5: 16px;
+  --dl-space-6: 20px;
+  --dl-space-7: 24px;
+  --dl-space-8: 32px;
+  --dl-space-9: 48px;
+
+  --dl-slot-h: 44px;   // time-slot height (AA touch target)
+  --dl-density: 1;     // multiplier hook for compact mode
+
+  // ---- Radius / Elevation ----------------------------------------------
+  --dl-radius-sm: 4px;
+  --dl-radius-md: 6px;
+  --dl-radius-lg: 10px;
+  --dl-radius-pill: 999px;
+
+  --dl-shadow-1: 0 1px 2px rgba(20, 24, 31, 0.06), 0 1px 1px rgba(20, 24, 31, 0.04);
+  --dl-shadow-2: 0 6px 20px rgba(20, 24, 31, 0.12), 0 2px 6px rgba(20, 24, 31, 0.08);
+  --dl-shadow-pop: 0 12px 32px rgba(20, 24, 31, 0.20);
+
+  // ---- Motion -----------------------------------------------------------
+  --dl-dur-fast: 120ms;
+  --dl-dur: 180ms;
+  --dl-dur-slow: 240ms;
+  --dl-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  // ---- Z-index ----------------------------------------------------------
+  --dl-z-grid: 0;
+  --dl-z-event: 10;
+  --dl-z-nowline: 20;
+  --dl-z-allday: 30;
+  --dl-z-header: 40;
+  --dl-z-popover: 1000;
+  --dl-z-editor: 1100;
+  --dl-z-drag: 1200;
+
+  // ---- Breakpoints (informational; used in container queries) -----------
+  --dl-bp-sm: 640px;
+  --dl-bp-md: 960px;
+  --dl-bp-lg: 1280px;
+}
+
+// Respect reduced-motion globally for the component.
+@media (prefers-reduced-motion: reduce) {
+  .dl-scheduler,
+  .dl-scheduler * {
+    --dl-dur-fast: 0ms;
+    --dl-dur: 0ms;
+    --dl-dur-slow: 0ms;
+  }
+}

@@ -1,0 +1,36 @@
+// _theme.scss — light is the default (declared in _tokens.scss). Dark overrides below.
+// Toggle via [data-dl-theme="dark"] on the host or any ancestor, or prefers-color-scheme.
+
+@mixin dl-dark {
+  --dl-bg: #14171a;
+  --dl-bg-subtle: #1a1e22;
+  --dl-surface: #1b1f24;
+  --dl-surface-raised: #22272d;
+
+  --dl-text: #e7eaee;
+  --dl-text-muted: #a3acb6;
+  --dl-text-faint: #6b7480;
+
+  --dl-border: #2a2f36;
+  --dl-border-strong: #3a4048;
+
+  --dl-accent: #5b8dff;
+  --dl-accent-contrast: #0c1322;
+  --dl-today: color-mix(in srgb, var(--dl-accent) 16%, transparent);
+  --dl-weekend: #181b1f;
+  --dl-now-line: #ff6b6b;
+
+  --dl-event-default-bg: color-mix(in srgb, var(--dl-accent) 22%, var(--dl-surface));
+  --dl-event-default-text: var(--dl-text);
+
+  --dl-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --dl-shadow-2: 0 6px 20px rgba(0, 0, 0, 0.5);
+  --dl-shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+.dl-scheduler[data-dl-theme="dark"] { @include dl-dark; }
+
+// Opt-in automatic dark mode (only when the app sets data-dl-theme="auto").
+@media (prefers-color-scheme: dark) {
+  .dl-scheduler[data-dl-theme="auto"] { @include dl-dark; }
+}

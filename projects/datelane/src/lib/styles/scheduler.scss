@@ -1,0 +1,478 @@
+// scheduler.scss — main entry. Components consume tokens only (no literals).
+// Build emits this to dist; consumers import the compiled CSS once:
+//   @import "@datelane/core/styles/scheduler.css";
+
+@use "tokens";
+@use "theme";
+
+.dl-scheduler {
+  font-family: var(--dl-font-sans);
+  font-size: var(--dl-fs-md);
+  line-height: var(--dl-lh-normal);
+  color: var(--dl-text);
+  background: var(--dl-bg);
+  // RTL-safe: all layout uses logical properties.
+  container-type: inline-size;
+  // Shell layout: header (fixed) + viewport (fills remaining block size).
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--dl-border);
+  border-radius: var(--dl-radius-md);
+  overflow: hidden;
+
+  *:focus-visible {
+    outline: 2px solid var(--dl-focus-ring);
+    outline-offset: 2px;
+    border-radius: var(--dl-radius-sm);
+  }
+}
+
+// ---- Viewport (engine outlet renders here) -------------------------------
+.dl-viewport {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: auto;
+  background: var(--dl-bg);
+}
+
+// ---- Header --------------------------------------------------------------
+.dl-header {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-4);
+  padding-inline: var(--dl-space-5);
+  block-size: 52px;
+  border-block-end: 1px solid var(--dl-border);
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--dl-z-header);
+  background: var(--dl-surface);
+}
+.dl-header__title {
+  font-weight: var(--dl-fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--dl-text);
+}
+.dl-header__view {
+  margin-inline-start: auto;
+  padding: var(--dl-space-1) var(--dl-space-3);
+  border-radius: var(--dl-radius-pill);
+  background: var(--dl-accent-soft);
+  color: var(--dl-accent);
+  font-size: var(--dl-fs-xs);
+  font-weight: var(--dl-fw-medium);
+  text-transform: capitalize;
+}
+
+// ---- Empty state (DESIGN-SYSTEM §7) --------------------------------------
+.dl-empty {
+  block-size: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dl-space-2);
+  padding: var(--dl-space-8);
+  text-align: center;
+}
+.dl-empty__title {
+  margin: 0;
+  font-weight: var(--dl-fw-medium);
+  color: var(--dl-text-muted);
+}
+.dl-empty__hint {
+  margin: 0;
+  font-size: var(--dl-fs-sm);
+  color: var(--dl-text-faint);
+}
+
+.dl-view-switch__btn[aria-pressed="true"] {
+  color: var(--dl-accent);
+  background: var(--dl-accent-soft);
+  font-weight: var(--dl-fw-semibold);
+}
+
+// ---- Event ---------------------------------------------------------------
+.dl-event {
+  box-sizing: border-box; // width/height bindings include padding + border
+  border-radius: var(--dl-radius-md);
+  background: var(--dl-event-bg, var(--dl-event-default-bg));
+  color: var(--dl-event-text, var(--dl-event-default-text));
+  border-inline-start: 2px solid var(--dl-event-accent, var(--dl-accent));
+  padding: var(--dl-space-2) var(--dl-space-3);
+  font-size: var(--dl-fs-sm);
+  min-block-size: calc(var(--dl-slot-h) * 0.5);
+  box-shadow: var(--dl-shadow-1);
+  transition: box-shadow var(--dl-dur) var(--dl-ease),
+              transform var(--dl-dur-fast) var(--dl-ease);
+  cursor: pointer;
+}
+.dl-event:hover { box-shadow: var(--dl-shadow-2); }
+.dl-event--active {
+  box-shadow: var(--dl-shadow-pop);
+  z-index: var(--dl-z-drag);
+  opacity: 0.92;
+}
+.dl-event__title,
+.dl-event__time {
+  line-height: var(--dl-lh-tight); // keep each to a single, un-clipped line
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dl-event__title { font-weight: var(--dl-fw-medium); }
+.dl-event__time { color: var(--dl-text-muted); font-variant-numeric: tabular-nums; }
+
+// Compact layout for short events: title + time on one line, smaller, centered.
+// Scoped under .dl-vt__col to out-specify `.dl-vt__col .dl-event { flex-direction: column }`.
+.dl-vt__col .dl-event--compact {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: var(--dl-space-2);
+  padding-block: 0;
+}
+.dl-event--compact .dl-event__title { font-size: var(--dl-fs-xs); min-inline-size: 0; }
+.dl-event--compact .dl-event__time { font-size: var(--dl-fs-xs); flex: 0 0 auto; }
+// Keep the label above the resize grips so they never clip the text.
+.dl-event__title,
+.dl-event__time { position: relative; z-index: 1; }
+
+// ---- Cells ---------------------------------------------------------------
+.dl-cell { border-inline-end: 1px solid var(--dl-border);
+  border-block-end: 1px solid var(--dl-border); }
+.dl-cell--weekend { background: var(--dl-weekend); }
+.dl-cell--today { background: var(--dl-today); }
+.dl-now-line { block-size: 1px; background: var(--dl-now-line);
+  z-index: var(--dl-z-nowline); }
+
+// ---- More indicator ------------------------------------------------------
+.dl-more { color: var(--dl-accent); font-size: var(--dl-fs-xs);
+  font-weight: var(--dl-fw-medium); cursor: pointer; }
+
+// ---- Vertical-time view (Day / Week / WorkWeek) --------------------------
+// Layout: a fixed header row on top; below it a vertically-scrolling area that
+// holds the time gutter + day columns (they scroll together).
+.dl-vt {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+// Header row (does not scroll)
+.dl-vt__headrow {
+  display: flex;
+  flex: 0 0 auto;
+  border-block-end: 1px solid var(--dl-border);
+}
+.dl-vt__corner { flex: 0 0 56px; border-inline-end: 1px solid var(--dl-border); }
+.dl-vt__heads { flex: 1 1 auto; display: flex; }
+.dl-vt__head {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dl-space-1);
+  padding-block: var(--dl-space-3);
+  border-inline-start: 1px solid var(--dl-border);
+}
+.dl-vt__head:first-child { border-inline-start: 0; }
+.dl-vt__dow {
+  font-size: var(--dl-fs-xs);
+  color: var(--dl-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.dl-vt__dom { font-size: var(--dl-fs-lg); font-weight: var(--dl-fw-semibold); }
+.dl-vt__head--today {
+  .dl-vt__dom {
+    color: var(--dl-accent-contrast);
+    background: var(--dl-accent);
+    inline-size: 1.7em;
+    block-size: 1.7em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--dl-radius-pill);
+  }
+  .dl-vt__dow { color: var(--dl-accent); }
+}
+
+// Scroll area
+.dl-vt__scroll { flex: 1 1 auto; overflow-y: auto; min-block-size: 0; }
+.dl-vt__grid { display: flex; min-block-size: min-content; }
+
+.dl-vt__gutter { flex: 0 0 56px; border-inline-end: 1px solid var(--dl-border); }
+.dl-vt__hour {
+  position: relative;
+  display: flex;
+  align-items: flex-start; // label sits at the slot top, level with its hour line
+  justify-content: flex-end;
+  padding-inline-end: var(--dl-space-3);
+  box-sizing: border-box;
+}
+.dl-vt__hour-end {
+  position: relative;
+  block-size: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding-inline-end: var(--dl-space-3);
+}
+.dl-vt__hour-end .dl-vt__time { transform: translateY(-100%); } // sit above the bottom edge
+.dl-vt__time {
+  font-size: var(--dl-fs-xs);
+  color: var(--dl-text-muted);
+  line-height: 1;
+}
+
+.dl-vt__body { flex: 1 1 auto; display: flex; }
+.dl-vt__col {
+  position: relative;
+  flex: 1 1 0;
+  min-inline-size: 0;
+  border-inline-start: 1px solid var(--dl-border);
+}
+.dl-vt__col:first-child { border-inline-start: 0; }
+.dl-vt__col--today { background: var(--dl-today); }
+// Hour line at the TOP of each slot so it lines up with the top-aligned hour label.
+.dl-vt__slot { border-block-start: 1px solid var(--dl-border); box-sizing: border-box; }
+.dl-vt__slot:first-child { border-block-start: 0; }
+
+// Positioned events sit absolutely inside their day column.
+.dl-vt__col .dl-event {
+  position: absolute;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  cursor: grab;
+  touch-action: none; // let pointer drag own the gesture (no scroll hijack)
+  transition: box-shadow var(--dl-dur) var(--dl-ease);
+}
+.dl-vt__col .dl-event--active { cursor: grabbing; }
+
+// Resize grips — thin hit areas on the top/bottom edges, shown on hover/focus.
+.dl-event__grip {
+  position: absolute;
+  inset-inline: 0;
+  block-size: 7px;
+  cursor: ns-resize;
+  opacity: 0;
+  transition: opacity var(--dl-dur-fast) var(--dl-ease);
+}
+.dl-event__grip::after {
+  content: "";
+  position: absolute;
+  inset-inline: 35%;
+  block-size: 2px;
+  border-radius: var(--dl-radius-pill);
+  background: var(--dl-event-accent, var(--dl-accent));
+}
+.dl-event__grip--start { inset-block-start: 0; }
+.dl-event__grip--start::after { inset-block-start: 2px; }
+.dl-event__grip--end { inset-block-end: 0; }
+.dl-event__grip--end::after { inset-block-end: 2px; }
+.dl-event:hover .dl-event__grip,
+.dl-event:focus-within .dl-event__grip,
+.dl-event--active .dl-event__grip { opacity: 0.7; }
+.dl-vt__col .dl-now-line {
+  position: absolute;
+  inset-inline: 0;
+  border-block-start: 2px solid var(--dl-now-line);
+}
+.dl-vt__col .dl-now-line::before {
+  content: "";
+  position: absolute;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: var(--dl-radius-pill);
+  background: var(--dl-now-line);
+  inset-inline-start: -1px;
+  inset-block-start: -5px;
+}
+
+// ---- Month view (calendar-grid engine) -----------------------------------
+.dl-mv {
+  --dl-mv-number-h: 26px;
+  --dl-mv-lane-h: 20px;
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-block-size: 0;
+}
+.dl-mv__head { display: flex; flex: 0 0 auto; border-block-end: 1px solid var(--dl-border); }
+.dl-mv__dow {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  padding-block: var(--dl-space-2);
+  text-align: center;
+  font-size: var(--dl-fs-xs);
+  font-weight: var(--dl-fw-medium);
+  color: var(--dl-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dl-mv__weeks { flex: 1 1 auto; display: flex; flex-direction: column; min-block-size: 0; }
+.dl-mv__week {
+  position: relative;
+  flex: 1 1 0;
+  min-block-size: calc(var(--dl-mv-number-h) + var(--dl-mv-lane-h) * 3 + 8px);
+  border-block-end: 1px solid var(--dl-border);
+}
+.dl-mv__week:last-child { border-block-end: 0; }
+
+// Day grid (borders, numbers, click targets) — sits under the bars overlay.
+// CSS grid with equal 1fr tracks: cell borders are drawn inside (border-box) so the
+// track boundaries stay at exact 1/N fractions, matching the bar overlay percentages.
+.dl-mv__daygrid { display: grid; block-size: 100%; }
+.dl-mv__cell {
+  box-sizing: border-box;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--dl-space-2);
+  border-inline-start: 1px solid var(--dl-border);
+  overflow: hidden;
+  cursor: pointer;
+  transition: background var(--dl-dur-fast) var(--dl-ease);
+}
+.dl-mv__cell:first-child { border-inline-start: 0; }
+.dl-mv__cell:hover { background: var(--dl-accent-soft); }
+.dl-mv__cell--weekend { background: var(--dl-weekend); }
+.dl-mv__cell--out { background: var(--dl-bg-subtle); }
+.dl-mv__cell--out .dl-mv__num { color: var(--dl-text-faint); }
+.dl-mv__cell--today { background: var(--dl-today); }
+
+.dl-mv__num {
+  align-self: flex-start;
+  min-inline-size: 1.6em;
+  block-size: 1.6em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--dl-fs-sm);
+  font-weight: var(--dl-fw-medium);
+  border-radius: var(--dl-radius-pill);
+}
+.dl-mv__cell--today .dl-mv__num {
+  background: var(--dl-accent);
+  color: var(--dl-accent-contrast);
+  font-weight: var(--dl-fw-semibold);
+}
+// Reserve vertical space for the bars overlay so “+more” sits below the lanes.
+.dl-mv__lanes { display: block; block-size: calc(var(--dl-mv-lane-h) * 3); flex: 0 0 auto; }
+.dl-mv .dl-more {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  padding: 0 var(--dl-space-2);
+  cursor: pointer;
+}
+
+// Bars overlay — absolutely positioned spanning event bars.
+.dl-mv__bars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; // bars re-enable it
+}
+.dl-mv__bar {
+  position: absolute;
+  box-sizing: border-box; // inline-size includes the accent border + padding
+  block-size: calc(var(--dl-mv-lane-h) - 3px);
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-2);
+  padding-inline: var(--dl-space-2);
+  border-inline-start: 3px solid var(--dl-event-accent, var(--dl-accent));
+  border-radius: var(--dl-radius-sm);
+  background: var(--dl-bg-subtle);
+  color: var(--dl-text);
+  font-size: var(--dl-fs-xs);
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  pointer-events: auto;
+  overflow: hidden;
+  transition: box-shadow var(--dl-dur) var(--dl-ease);
+}
+.dl-mv__bar:hover { box-shadow: var(--dl-shadow-1); }
+.dl-mv__bar--active { box-shadow: var(--dl-shadow-pop); z-index: var(--dl-z-drag); opacity: 0.95; cursor: grabbing; }
+// Multi-week continuation: flatten the cut edges.
+.dl-mv__bar--before { border-start-start-radius: 0; border-end-start-radius: 0; border-inline-start-width: 0; }
+.dl-mv__bar--after { border-start-end-radius: 0; border-end-end-radius: 0; }
+.dl-mv__bardot {
+  flex: 0 0 auto;
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: var(--dl-radius-pill);
+  background: var(--dl-event-accent, var(--dl-accent));
+}
+.dl-mv__bartext { min-inline-size: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dl-mv__grip {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 6px;
+  cursor: ew-resize;
+}
+.dl-mv__grip--start { inset-inline-start: 0; }
+.dl-mv__grip--end { inset-inline-end: 0; }
+
+.dl-mv__dot {
+  flex: 0 0 auto;
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: var(--dl-radius-pill);
+  background: var(--dl-event-accent, var(--dl-accent));
+}
+.dl-mv__chip-text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+// “+N more” popover
+.dl-mv__pop {
+  position: fixed;
+  z-index: var(--dl-z-popover);
+  min-inline-size: 200px;
+  max-inline-size: 280px;
+  padding: var(--dl-space-2);
+  background: var(--dl-surface-raised);
+  border: 1px solid var(--dl-border);
+  border-radius: var(--dl-radius-md);
+  box-shadow: var(--dl-shadow-2);
+}
+.dl-mv__pop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--dl-space-2) var(--dl-space-2) var(--dl-space-3);
+}
+.dl-mv__pop-close {
+  border: 0;
+  background: transparent;
+  font-size: var(--dl-fs-lg);
+  line-height: 1;
+  cursor: pointer;
+  color: var(--dl-text-muted);
+}
+.dl-mv__pop-item {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-2);
+  inline-size: 100%;
+  padding: var(--dl-space-2);
+  border: 0;
+  border-radius: var(--dl-radius-sm);
+  background: transparent;
+  color: var(--dl-text);
+  font: inherit;
+  font-size: var(--dl-fs-sm);
+  text-align: start;
+  cursor: pointer;
+}
+.dl-mv__pop-item:hover { background: var(--dl-accent-soft); }
+.dl-mv__pop-time { margin-inline-start: auto; color: var(--dl-text-muted); font-variant-numeric: tabular-nums; }
+
+// NOTE: per-view layout (grid columns, timeline tracks, etc.) lives in each
+// view's own .scss, all consuming the same tokens. This file holds shared shell + atoms.

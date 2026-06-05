@@ -1,0 +1,19 @@
+// Demo global styles. Pulls in the library theme (tokens + theme + shell styles)
+// so the empty <dl-scheduler> shell renders with the default design tokens applied.
+@use "../../datelane/src/lib/styles/scheduler";
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #f6f7f9;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+app-root {
+  display: block;
+  padding: 24px;
+}

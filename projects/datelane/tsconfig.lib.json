@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "outDir": "../../out-tsc/lib", "declarationMap": true },
+  "include": ["src/**/*.ts", "luxon-adapter/**/*.ts", "moment-adapter/**/*.ts"],
+  "exclude": ["**/*.spec.ts"]
+}
