@@ -3,8 +3,8 @@
 // absolutely-positioned events, a now-line, and pointer drag-to-move + resize. Tree-shakeable.
 
 import {
-  Component, Input, Output, EventEmitter, Inject, HostListener,
-  ChangeDetectionStrategy, ViewEncapsulation,
+  Component, Input, Output, EventEmitter, Inject, HostListener, ViewChild, ElementRef,
+  AfterViewInit, OnChanges, ChangeDetectionStrategy, ViewEncapsulation,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DateAdapter, SCHEDULER_DATE_ADAPTER } from '../date-adapter/date-adapter';
@@ -59,7 +59,7 @@ interface Gesture {
       </div>
 
       <!-- Scrollable body: time gutter + day columns scroll together vertically. -->
-      <div class="dl-vt__scroll">
+      <div #scrollEl class="dl-vt__scroll">
         <div class="dl-vt__grid">
           <div class="dl-vt__gutter">
             @for (h of layout.hours; track h) {
@@ -127,7 +127,7 @@ interface Gesture {
     </div>
   `,
 })
-export class VerticalTimeViewComponent {
+export class VerticalTimeViewComponent implements AfterViewInit, OnChanges {
   /** Visible day dates (adapter date type), already in display order. */
   @Input() days: unknown[] = [];
   /** Normalized events to place. */
@@ -144,6 +144,10 @@ export class VerticalTimeViewComponent {
   @Input() draggable = true;
   /** Whether events can be resized. */
   @Input() resizable = true;
+  /** Auto-scroll the body to the first event (or `scrollHour`) on load / data change. */
+  @Input() autoScroll = true;
+  /** When set, scroll to this hour instead of the first event. */
+  @Input() scrollHour?: number;
 
   /**
    * Emitted on drop/resize-end with a CLONE of the event carrying the proposed new
@@ -151,9 +155,60 @@ export class VerticalTimeViewComponent {
    */
   @Output() eventChange = new EventEmitter<SchedulerEvent<unknown>>();
 
+  /** Emitted on a plain click (no drag) so the shell can open the quick-view / host form. */
+  @Output() eventActivate = new EventEmitter<SchedulerEvent<unknown>>();
+
   gesture: Gesture | null = null;
 
+  @ViewChild('scrollEl') private scrollEl?: ElementRef<HTMLElement>;
+  /** Key of the period last auto-scrolled, so we don't re-scroll on event/CD churn. */
+  private lastScrollKey = '';
+
   constructor(@Inject(SCHEDULER_DATE_ADAPTER) public adapter: DateAdapter) {}
+
+  ngAfterViewInit(): void { this.maybeScroll(true); }
+  ngOnChanges(): void { this.maybeScroll(false); }
+
+  /**
+   * Auto-scroll only on first render or when the visible PERIOD changes (navigation) —
+   * never on event edits / drag reflow / change-detection churn, so the user's manual
+   * scroll position is preserved within a period.
+   */
+  private maybeScroll(init: boolean): void {
+    if (!this.autoScroll) return;
+    const key = this.periodKey();
+    if (!init && key === this.lastScrollKey) return;
+    this.lastScrollKey = key;
+    this.scrollToFirst();
+  }
+
+  /** Stable identity of the visible period (first day + day count + hour window). */
+  private periodKey(): string {
+    if (!this.days.length) return 'empty';
+    const first = this.adapter.toNative(this.days[0]).getTime();
+    return `${first}:${this.days.length}:${this.startHour}:${this.endHour}:${this.scrollHour}`;
+  }
+
+  /** Scroll the body so the first event (or `scrollHour`) is near the top. */
+  private scrollToFirst(): void {
+    const el = this.scrollEl?.nativeElement;
+    if (!el) return;
+    const total = (this.endHour - this.startHour) * 60;
+    const bodyPx = this.layout.hours.length * this.slotHeight;
+
+    let targetMin: number | null = null;
+    if (this.scrollHour != null) {
+      targetMin = (this.scrollHour - this.startHour) * 60;
+    } else {
+      const tops = this.layout.columns.flatMap((c) => c.events.map((e) => e.top));
+      if (tops.length) targetMin = (Math.min(...tops) / 100) * total;
+    }
+    if (targetMin == null) return;
+
+    // Leave ~half a slot of context above the target.
+    const top = (targetMin / total) * bodyPx - this.slotHeight * 0.5;
+    requestAnimationFrame(() => el.scrollTo({ top: Math.max(0, top) }));
+  }
 
   get layout(): VerticalTimeLayout {
     return layoutVerticalTime(this.days, this.events, this.adapter, this.startHour, this.endHour);
@@ -323,8 +378,13 @@ export class VerticalTimeViewComponent {
   onGestureEnd(ev: PointerEvent): void {
     const g = this.gesture;
     this.gesture = null;
-    if (!g || !g.active) return;
+    if (!g) return;
     (ev.target as HTMLElement).releasePointerCapture?.(ev.pointerId);
+    if (!g.active) {
+      // No drag threshold crossed → treat as a click/activation.
+      if (g.mode === 'move') this.eventActivate.emit(g.event);
+      return;
+    }
     this.eventChange.emit({ ...g.event, start: g.newStart, end: g.newEnd });
   }
 

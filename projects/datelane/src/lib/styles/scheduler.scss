@@ -474,5 +474,356 @@
 .dl-mv__pop-item:hover { background: var(--dl-accent-soft); }
 .dl-mv__pop-time { margin-inline-start: auto; color: var(--dl-text-muted); font-variant-numeric: tabular-nums; }
 
+// ---- Agenda view (list engine) -------------------------------------------
+.dl-ag { display: flex; flex-direction: column; block-size: 100%; }
+.dl-ag__day {
+  display: flex;
+  gap: var(--dl-space-4);
+  padding: var(--dl-space-4) var(--dl-space-5);
+  border-block-end: 1px solid var(--dl-border);
+}
+.dl-ag__day--today { background: var(--dl-today); }
+.dl-ag__day--weekend { background: var(--dl-weekend); }
+.dl-ag__date {
+  flex: 0 0 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+.dl-ag__dow { font-size: var(--dl-fs-xs); color: var(--dl-text-muted); text-transform: uppercase; }
+.dl-ag__dom { font-size: var(--dl-fs-xl); font-weight: var(--dl-fw-semibold); }
+.dl-ag__mon { font-size: var(--dl-fs-xs); color: var(--dl-text-muted); }
+.dl-ag__day--today .dl-ag__dom { color: var(--dl-accent); }
+.dl-ag__events { flex: 1 1 auto; display: flex; flex-direction: column; gap: var(--dl-space-2); min-inline-size: 0; }
+.dl-ag__none { color: var(--dl-text-faint); font-size: var(--dl-fs-sm); padding-block: var(--dl-space-2); }
+.dl-ag__event {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-3);
+  inline-size: 100%;
+  padding: var(--dl-space-2) var(--dl-space-3);
+  border: 0;
+  border-radius: var(--dl-radius-sm);
+  background: var(--dl-bg-subtle);
+  color: var(--dl-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background var(--dl-dur-fast) var(--dl-ease);
+}
+.dl-ag__event:hover { background: var(--dl-accent-soft); }
+.dl-ag__bar {
+  flex: 0 0 auto;
+  inline-size: 4px;
+  align-self: stretch;
+  border-radius: var(--dl-radius-pill);
+  background: var(--dl-event-accent, var(--dl-accent));
+}
+.dl-ag__time { flex: 0 0 auto; color: var(--dl-text-muted); font-size: var(--dl-fs-sm); font-variant-numeric: tabular-nums; }
+.dl-ag__subject { min-inline-size: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: var(--dl-fw-medium); }
+
+// ---- Year view -----------------------------------------------------------
+.dl-yr {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--dl-space-5);
+  padding: var(--dl-space-5);
+}
+.dl-yr--vertical { grid-template-columns: repeat(3, 1fr); }
+.dl-yr__month { display: flex; flex-direction: column; gap: var(--dl-space-1); }
+.dl-yr__mhead {
+  font-size: var(--dl-fs-sm);
+  font-weight: var(--dl-fw-semibold);
+  color: var(--dl-accent);
+  padding-block-end: var(--dl-space-1);
+}
+.dl-yr__dow, .dl-yr__week { display: grid; grid-template-columns: repeat(7, 1fr); }
+.dl-yr__dowcell {
+  text-align: center;
+  font-size: 9px;
+  color: var(--dl-text-faint);
+  text-transform: uppercase;
+}
+.dl-yr__day {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--dl-text);
+  font: inherit;
+  font-size: var(--dl-fs-xs);
+  border-radius: var(--dl-radius-sm);
+  cursor: pointer;
+}
+.dl-yr__day:hover { background: var(--dl-accent-soft); }
+.dl-yr__day--out { color: var(--dl-text-faint); }
+.dl-yr__day--weekend .dl-yr__dnum { color: var(--dl-text-muted); }
+.dl-yr__day--today {
+  background: var(--dl-accent);
+  color: var(--dl-accent-contrast);
+  font-weight: var(--dl-fw-semibold);
+}
+.dl-yr__dot {
+  position: absolute;
+  inset-block-end: 1px;
+  inline-size: 4px;
+  block-size: 4px;
+  border-radius: var(--dl-radius-pill);
+  background: var(--dl-accent);
+}
+.dl-yr__day--today .dl-yr__dot { background: var(--dl-accent-contrast); }
+
+// ---- Month Agenda --------------------------------------------------------
+.dl-ma {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(220px, 0.8fr);
+  gap: var(--dl-space-5);
+  padding: var(--dl-space-5);
+  block-size: 100%;
+  box-sizing: border-box;
+}
+@container (max-width: 700px) { .dl-ma { grid-template-columns: 1fr; } }
+.dl-ma__cal { display: flex; flex-direction: column; }
+.dl-ma__dow, .dl-ma__week { display: grid; grid-template-columns: repeat(7, 1fr); }
+.dl-ma__dowcell {
+  text-align: center;
+  font-size: var(--dl-fs-xs);
+  color: var(--dl-text-muted);
+  text-transform: uppercase;
+  padding-block: var(--dl-space-2);
+}
+.dl-ma__day {
+  position: relative;
+  aspect-ratio: 1.2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--dl-text);
+  font: inherit;
+  border-radius: var(--dl-radius-sm);
+  cursor: pointer;
+}
+.dl-ma__day:hover { background: var(--dl-accent-soft); }
+.dl-ma__day--out { color: var(--dl-text-faint); }
+.dl-ma__day--weekend { background: var(--dl-weekend); }
+.dl-ma__day--today .dl-ma__dnum { color: var(--dl-accent); font-weight: var(--dl-fw-semibold); }
+.dl-ma__day--sel {
+  background: var(--dl-accent);
+  color: var(--dl-accent-contrast);
+}
+.dl-ma__day--sel .dl-ma__dnum { color: var(--dl-accent-contrast); }
+.dl-ma__dot {
+  position: absolute;
+  inset-block-end: 4px;
+  inline-size: 5px;
+  block-size: 5px;
+  border-radius: var(--dl-radius-pill);
+  background: var(--dl-accent);
+}
+.dl-ma__day--sel .dl-ma__dot { background: var(--dl-accent-contrast); }
+.dl-ma__list { display: flex; flex-direction: column; gap: var(--dl-space-2); }
+.dl-ma__lhead { font-weight: var(--dl-fw-semibold); padding-block-end: var(--dl-space-2); }
+.dl-ma__none { color: var(--dl-text-faint); font-size: var(--dl-fs-sm); }
+.dl-ma__event {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-3);
+  inline-size: 100%;
+  padding: var(--dl-space-2) var(--dl-space-3);
+  border: 0;
+  border-radius: var(--dl-radius-sm);
+  background: var(--dl-bg-subtle);
+  color: var(--dl-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.dl-ma__event:hover { background: var(--dl-accent-soft); }
+.dl-ma__bar {
+  flex: 0 0 auto;
+  inline-size: 4px;
+  align-self: stretch;
+  border-radius: var(--dl-radius-pill);
+  background: var(--dl-event-accent, var(--dl-accent));
+}
+.dl-ma__time { flex: 0 0 auto; color: var(--dl-text-muted); font-size: var(--dl-fs-sm); font-variant-numeric: tabular-nums; }
+.dl-ma__subject { min-inline-size: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: var(--dl-fw-medium); }
+
+// ---- Timeline views (horizontal-time engine) -----------------------------
+.dl-tl {
+  --dl-tl-colw: 64px;
+  --dl-tl-gutter: 160px;
+  --dl-tl-lane-h: 24px;
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-block-size: 0;
+  font-variant-numeric: tabular-nums;
+}
+.dl-tl__head { display: flex; flex: 0 0 auto; border-block-end: 1px solid var(--dl-border); }
+.dl-tl__corner {
+  flex: 0 0 var(--dl-tl-gutter);
+  display: flex;
+  align-items: flex-end;
+  padding: var(--dl-space-2) var(--dl-space-3);
+  font-size: var(--dl-fs-xs);
+  font-weight: var(--dl-fw-medium);
+  color: var(--dl-text-muted);
+  border-inline-end: 1px solid var(--dl-border);
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 2;
+  background: var(--dl-surface);
+}
+// When there is no resource gutter the corner collapses.
+.dl-tl__corner:empty { flex-basis: 0; border-inline-end: 0; }
+.dl-tl__headcols { flex: 1 1 auto; min-inline-size: 0; }
+.dl-tl__majors, .dl-tl__cols { display: flex; min-inline-size: max-content; }
+.dl-tl__major {
+  flex: 0 0 auto;
+  min-inline-size: var(--dl-tl-colw);
+  padding: var(--dl-space-1) var(--dl-space-2);
+  border-inline-start: 1px solid var(--dl-border);
+  font-size: var(--dl-fs-xs);
+  font-weight: var(--dl-fw-semibold);
+  color: var(--dl-text-muted);
+  white-space: nowrap;
+  text-align: center;
+}
+.dl-tl__col {
+  flex: 0 0 var(--dl-tl-colw);
+  inline-size: var(--dl-tl-colw);
+  padding-block: var(--dl-space-1);
+  border-inline-start: 1px solid var(--dl-border);
+  font-size: 10px;
+  color: var(--dl-text-faint);
+  text-align: center;
+  white-space: nowrap;
+}
+.dl-tl__col--today { color: var(--dl-accent); background: var(--dl-today); }
+.dl-tl__col--weekend { background: var(--dl-weekend); }
+
+// align-items:flex-start so the gutter + column gridlines stop at the last row
+// instead of stretching their borders down through the empty area below.
+.dl-tl__body { flex: 1 1 auto; display: flex; align-items: flex-start; overflow: auto; min-block-size: 0; }
+.dl-tl__gutter {
+  flex: 0 0 var(--dl-tl-gutter);
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 1;
+  background: var(--dl-surface);
+  border-inline-end: 1px solid var(--dl-border);
+}
+.dl-tl__rhead {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-2);
+  padding-inline: var(--dl-space-3);
+  border-block-end: 1px solid var(--dl-border);
+  font-size: var(--dl-fs-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dl-tl__rdot { flex: 0 0 auto; inline-size: 8px; block-size: 8px; border-radius: var(--dl-radius-pill); background: var(--dl-accent); }
+.dl-tl__rows { flex: 1 1 auto; min-inline-size: max-content; }
+.dl-tl__row {
+  position: relative;
+  display: flex;
+  border-block-end: 1px solid var(--dl-border);
+}
+.dl-tl__cell {
+  flex: 0 0 var(--dl-tl-colw);
+  inline-size: var(--dl-tl-colw);
+  border-inline-start: 1px solid var(--dl-border);
+  box-sizing: border-box;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.dl-tl__cell:hover { background: var(--dl-accent-soft); }
+.dl-tl__cell--today { background: var(--dl-today); }
+.dl-tl__cell--weekend { background: var(--dl-weekend); }
+.dl-tl__more { padding-block-end: var(--dl-space-1); }
+.dl-tl__bar {
+  position: absolute;
+  block-size: calc(var(--dl-tl-lane-h) - 3px);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding-inline: var(--dl-space-2);
+  border-inline-start: 3px solid var(--dl-event-accent, var(--dl-accent));
+  border-radius: var(--dl-radius-sm);
+  background: var(--dl-bg-subtle);
+  color: var(--dl-text);
+  font-size: var(--dl-fs-xs);
+  line-height: 1;
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow var(--dl-dur) var(--dl-ease);
+}
+.dl-tl__bar:hover { box-shadow: var(--dl-shadow-1); }
+.dl-tl__bar--before { border-start-start-radius: 0; border-end-start-radius: 0; border-inline-start-width: 0; }
+.dl-tl__bar--after { border-start-end-radius: 0; border-end-end-radius: 0; }
+.dl-tl__bartext { min-inline-size: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+// ---- Quick-view popover --------------------------------------------------
+.dl-qv {
+  position: fixed;
+  z-index: var(--dl-z-editor);
+  inline-size: 280px;
+  max-inline-size: 90vw;
+  padding: var(--dl-space-4) var(--dl-space-5);
+  background: var(--dl-surface-raised);
+  border: 1px solid var(--dl-border);
+  border-radius: var(--dl-radius-lg);
+  box-shadow: var(--dl-shadow-2);
+}
+.dl-qv__bar {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block: 0;
+  inline-size: 4px;
+  border-start-start-radius: var(--dl-radius-lg);
+  border-end-start-radius: var(--dl-radius-lg);
+  background: var(--dl-event-accent, var(--dl-accent));
+}
+.dl-qv__close {
+  position: absolute;
+  inset-block-start: var(--dl-space-2);
+  inset-inline-end: var(--dl-space-3);
+  border: 0;
+  background: transparent;
+  font-size: var(--dl-fs-lg);
+  line-height: 1;
+  color: var(--dl-text-muted);
+  cursor: pointer;
+}
+.dl-qv__title { margin: 0 var(--dl-space-5) var(--dl-space-2) 0; font-size: var(--dl-fs-lg); font-weight: var(--dl-fw-semibold); }
+.dl-qv__when { margin: 0 0 var(--dl-space-2); color: var(--dl-text-muted); font-size: var(--dl-fs-sm); font-variant-numeric: tabular-nums; }
+.dl-qv__meta, .dl-qv__desc { margin: 0 0 var(--dl-space-2); font-size: var(--dl-fs-sm); color: var(--dl-text); }
+.dl-qv__actions { display: flex; gap: var(--dl-space-2); margin-block-start: var(--dl-space-3); }
+.dl-qv__btn {
+  flex: 1 1 0;
+  padding: var(--dl-space-2) var(--dl-space-3);
+  border: 1px solid var(--dl-border);
+  border-radius: var(--dl-radius-sm);
+  background: var(--dl-surface);
+  color: var(--dl-text);
+  font: inherit;
+  font-weight: var(--dl-fw-medium);
+  cursor: pointer;
+  transition: background var(--dl-dur-fast) var(--dl-ease);
+}
+.dl-qv__btn--edit:hover { background: var(--dl-accent-soft); border-color: var(--dl-accent); color: var(--dl-accent); }
+.dl-qv__btn--del:hover { background: color-mix(in srgb, var(--dl-danger) 12%, transparent); border-color: var(--dl-danger); color: var(--dl-danger); }
+
 // NOTE: per-view layout (grid columns, timeline tracks, etc.) lives in each
 // view's own .scss, all consuming the same tokens. This file holds shared shell + atoms.

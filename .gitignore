@@ -46,9 +46,10 @@ Thumbs.db
 .env.local
 .env.*.local
 
-# Markdown files (except README)
+# Markdown files (except project docs)
 *.md
 !README.md
+!CHANGELOG.md
 
 # Build artifacts
 *.js

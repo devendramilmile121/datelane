@@ -3,11 +3,12 @@
 
 import { NgModule, ModuleWithProviders, Provider } from '@angular/core';
 import { SchedulerComponent } from './scheduler.component';
+import { QuickViewTemplateDirective } from '../templates/scheduler-templates';
 import { provideNativeDateAdapter } from '../core/providers';
 
 @NgModule({
-  imports: [SchedulerComponent],
-  exports: [SchedulerComponent],
+  imports: [SchedulerComponent, QuickViewTemplateDirective],
+  exports: [SchedulerComponent, QuickViewTemplateDirective],
 })
 export class SchedulerModule {
   /** Use in a root module: SchedulerModule.forRoot(provideLuxonDateAdapter()) */
