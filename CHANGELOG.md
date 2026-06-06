@@ -46,6 +46,17 @@ dependencies and a pluggable date layer (Native / Luxon / Moment).
 - Token-based design system (`_tokens.scss` → `_theme.scss` → `scheduler.scss`), light/dark,
   RTL-safe logical properties.
 
+#### Angular compatibility
+
+- Published in **partial-Ivy** compilation mode (`compilationMode: "partial"`), so the library is
+  linked by the consuming app's compiler instead of being locked to one runtime.
+- Declaration `minVersion` floor is **17** (control-flow `@if`/`@for`); peer range
+  `@angular/core`/`@angular/common` = `>=18.0.0 <23.0.0`. Verified by real production AOT
+  builds on **Angular 18, 19, 20, 21, and 22**.
+- `scripts/verify-angular.sh` + a GitHub Actions matrix scaffold a throwaway app per major,
+  install the packed tarball, and run a production AOT build as the compatibility proof.
+- Removed `@let` (Angular 18.1+) from the Month view to keep the floor at 17.
+
 ### Known limitations
 
 - Recurrence (RRULE/EXDATE), full editor window, and keyboard grid navigation are not yet implemented.

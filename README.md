@@ -78,8 +78,24 @@ Override any token on `.dl-scheduler` (or an ancestor):
 Full token list: `DESIGN-SYSTEM.md`.
 
 ## Angular support
-Primary: **Angular 14+** (standalone). Older apps (9–13) can use the exported `SchedulerModule`.
-Date libraries are optional peer deps.
+
+| Angular | Status |
+|---------|--------|
+| 18 | ✅ verified (AOT build) |
+| 19 | ✅ verified (AOT build) |
+| 20 | ✅ verified (AOT build) |
+| 21 | ✅ verified (AOT build) |
+| 22 | ✅ verified (AOT build) |
+
+Every major in this table is verified by an actual production **AOT build** of a real consumer
+app — not just a declared range. The library is published in **partial-Ivy** mode, so it is
+linked by the *consuming* app's Angular compiler rather than locked to one runtime; its
+declarations carry a `minVersion` of **17** (control-flow `@if`/`@for`). Peer range:
+`@angular/core`/`@angular/common` = `>=18.0.0 <23.0.0`.
+
+`scripts/verify-angular.sh <major>` scaffolds a throwaway app on that version, installs the
+packed tarball, and runs `ng build --configuration production`; CI runs it across all five
+majors on every push. Date libraries (Luxon/Moment) are optional peer deps.
 
 ## License
 MIT

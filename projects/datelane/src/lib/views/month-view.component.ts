@@ -12,7 +12,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { DateAdapter, SCHEDULER_DATE_ADAPTER } from '../date-adapter/date-adapter';
 import { SchedulerEvent } from '../core/models';
-import { layoutMonth, MonthLayout, MonthSegment } from '../engine/month-layout';
+import { layoutMonth, MonthLayout, MonthSegment, MonthWeek, MonthDay } from '../engine/month-layout';
 
 const DRAG_THRESHOLD_PX = 4;
 const NUMBER_H = 26; // px reserved at cell top for the day number (matches CSS var)
@@ -69,8 +69,7 @@ interface Popover {
         @for (week of layout.weeks; track $index; let wi = $index) {
           <div class="dl-mv__week" role="row">
             <div class="dl-mv__daygrid" [style.grid-template-columns]="gridCols">
-              @for (i of columns; track i) {
-                @let day = week.days[i];
+              @for (day of visibleDays(week); track $index) {
                 <div
                   class="dl-mv__cell"
                   role="gridcell"
@@ -94,8 +93,7 @@ interface Popover {
 
             <div class="dl-mv__bars">
               @for (seg of week.segments; track seg.event.id + ':' + seg.startCol) {
-                @let geo = segGeom(seg);
-                @if (geo) {
+                @if (segGeom(seg); as geo) {
                   <div
                     class="dl-mv__bar"
                     [class.dl-mv__bar--active]="isActive(seg)"
@@ -185,6 +183,11 @@ export class MonthViewComponent {
   /** Equal grid tracks so bar percentages align exactly with day cells. */
   get gridCols(): string {
     return `repeat(${this.columns.length}, 1fr)`;
+  }
+
+  /** A week's day cells in the visible column order (weekends dropped when hidden). */
+  visibleDays(week: MonthWeek): MonthDay[] {
+    return this.columns.map((i) => week.days[i]);
   }
 
   /** Layout — live-reflows with the previewed event while a gesture is active. */

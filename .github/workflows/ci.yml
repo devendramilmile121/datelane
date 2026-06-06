@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ---- Quality gates + build the publishable tarball -----------------------
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Pack tarball
+        run: cd dist/datelane && npm pack --pack-destination "$GITHUB_WORKSPACE/artifacts"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: datelane-core-tarball
+          path: artifacts/*.tgz
+
+  # ---- Cross-version compatibility matrix ----------------------------------
+  # Proves the partial-Ivy library links + AOT-compiles on each supported Angular major.
+  # All five (18–22) are published and verified green. `fail-fast: false` so one version's
+  # failure surfaces every version's result rather than cancelling the run.
+  compat:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        angular: ['18', '19', '20', '21', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/download-artifact@v4
+        with:
+          name: datelane-core-tarball
+          path: artifacts
+      - name: Verify against Angular ${{ matrix.angular }}
+        run: |
+          TARBALL=$(ls artifacts/*.tgz | head -n1)
+          bash scripts/verify-angular.sh "${{ matrix.angular }}" "$TARBALL"
