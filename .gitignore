@@ -46,10 +46,15 @@ Thumbs.db
 .env.local
 .env.*.local
 
-# Markdown files (except project docs)
+# Markdown files (except project docs + AI-agent config)
 *.md
 !README.md
 !CHANGELOG.md
+!CLAUDE.md
+!AGENTS.md
+!scheduler-plan.md
+!DESIGN-SYSTEM.md
+!.claude/**/*.md
 
 # Build artifacts
 *.js
