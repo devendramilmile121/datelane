@@ -17,9 +17,11 @@ A lightweight, fully customizable **Angular scheduler / calendar** — all 12 vi
 - **Controlled & unopinionated editing** — the library ships **no form**. It emits click events and
   shows an optional quick-view popover you can fully replace; your app owns create/edit/delete.
 - **Customizable** — every color/size/motion value is a CSS custom property; the quick-view is
-  template-overridable.
+  template-overridable; every fixed UI string is overridable via `provideSchedulerI18n(...)`.
+- **Built-in navigation** — period-aware prev / next / today and a view switcher in the header;
+  an all-day band (collapsible) for multi-day events on Day/Week/Work Week.
 - **Wide Angular support** — published in partial-Ivy mode, verified by real AOT builds on
-  **Angular 18–22**. RTL-safe, dark-mode-ready.
+  **Angular 18–22**. RTL-safe, dark-mode-ready, responsive.
 
 ## Install
 
@@ -279,14 +281,57 @@ import { provideLuxonDateAdapter } from '@datelane/core/luxon-adapter';
 providers: [provideScheduler(provideLuxonDateAdapter({ locale: 'fr' }))];
 ```
 
-## NgModule (non-standalone apps)
+## Localizing UI strings
 
-Standalone-first, but an `NgModule` surface is exported for non-standalone apps:
+Dates and numbers are localized through the date adapter's `locale`. The fixed **UI strings**
+(header `Today` / prev / next labels, the view switcher, quick-view `Edit` / `Delete` / `Close`,
+the all-day label, and the `+N more` / `Show less` overflow text) come from an injectable message
+token. Override any subset — the rest fall back to the built-in English defaults:
 
 ```ts
-import { SchedulerModule } from '@datelane/core';
+import { provideScheduler } from '@datelane/core';
+import { provideSchedulerI18n } from '@datelane/core';
 
-@NgModule({ imports: [SchedulerModule.forRoot(/* optional adapter providers */)] })
+providers: [
+  provideScheduler(),
+  provideSchedulerI18n({
+    today: "Aujourd’hui",
+    previous: 'Précédent',
+    next: 'Suivant',
+    edit: 'Modifier',
+    delete: 'Supprimer',
+    moreEvents: (n) => `+${n} de plus`,
+  }),
+];
+```
+
+The full contract is the `SchedulerMessages` interface (token: `SCHEDULER_MESSAGES`).
+
+## Header navigation
+
+The header renders **Today · ‹ · ›** plus a view switcher (shown when you pass two or more
+`[views]`). Prev / next step by the active view's own unit — a day (or `interval` days), a week, a
+month, a year, or the agenda's day count — and emit `(navigate)` with `action: 'prev' | 'next' |
+'today'`. Switching a view emits `(viewChange)`. Both drive the two-way `[(viewDate)]` /
+`[(activeView)]`, so the host stays the source of truth.
+
+## All-day band (Day / Week / Work Week)
+
+Multi-day and all-day events render as spanning bars in an all-day band above the time grid.
+Overlapping events stack into lanes; when there are more lanes than the collapsed cap the extra
+ones fold behind a **`+N more`** toggle. Configure the cap on the view via `[allDayMaxLanes]`
+(default `2`).
+
+## Non-standalone apps
+
+The components are standalone-only (no `NgModule` surface). Apps still organised around
+`NgModule`s import the standalone components directly — Angular has supported importing
+standalone components into an `NgModule` since v14:
+
+```ts
+import { SchedulerComponent } from '@datelane/core';
+
+@NgModule({ imports: [SchedulerComponent] })
 export class AppModule {}
 ```
 
