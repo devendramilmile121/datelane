@@ -20,13 +20,17 @@ These apply to every file under the publishable library. The demo app
    `DateAdapter`, implement it in Native + Luxon + Moment, and add a parity test.
 3. **Tree-shakeable.** `sideEffects: false`. Views are factory functions (`dayView()`, …). No barrel
    that pulls every view/renderer into one import.
-4. **Standalone-first, NgModule-compatible.** Public components are `standalone: true`; keep the
-   `SchedulerModule` surface working. No signals in the public API (compat). Signals only behind
-   internal, version-guarded wrappers.
-5. **Partial-Ivy publish.** Production lib build stays `compilationMode: "partial"`
-   (`tsconfig.lib.prod.json`). Do not introduce template features that raise the declaration
-   `minVersion` above **17** (no `@let`, `@defer`, signal `input()/output()/model()`), or the
-   Angular 18 floor breaks. Verify with `scripts/verify-angular.sh`.
+4. **Standalone-only, signal-first.** Public components are `standalone: true` (kept explicit —
+   default only in v19). No `NgModule`/`SchedulerModule` surface. Components use signal APIs:
+   `input()`/`output()`/`model()` over `@Input`/`@Output`, `computed()` for derived state,
+   `effect()` over `ngOnChanges`, `inject()` over constructor DI, `host` object over
+   `@HostListener`/`@HostBinding`. The `engine/` stays framework-free pure functions (no signals).
+   The newable `NativeDateAdapter` keeps its constructor (parity spec does `new NativeDateAdapter()`).
+5. **Partial-Ivy publish, Angular 18 floor.** Production lib build stays `compilationMode: "partial"`
+   (`tsconfig.lib.prod.json`). Signal `input()/output()/model()` are allowed — they raise the
+   declaration `minVersion` to ~17.1, still ≤ the **18** peerDep floor (`>=18.0.0 <23.0.0`), so the
+   partial-Ivy publish stays valid. Do not adopt features that push `minVersion` above 18
+   (e.g. `linkedSignal`, v19+ control-flow additions). Verify with `scripts/verify-angular.sh`.
 6. **Original work only.** Original `.dl-*` class names, original API names, original markup/docs.
    Syncfusion EJ2 is a *feature checklist* only — never copy its text, markup, or class names.
 7. **SSR-safe.** No `window`/`document`/`navigator` without an `isPlatformBrowser` guard.
@@ -47,7 +51,7 @@ These apply to every file under the publishable library. The demo app
 - Keyboard-operable + ARIA correct (see `ux-rules.md`).
 - Themed via tokens only; RTL-safe; responsive.
 - The matching checkbox in `scheduler-plan.md` §2 flipped to ☑.
-- No new hard dependency in core `package.json`. `minVersion` floor still 17.
+- No new hard dependency in core `package.json`. `minVersion` floor still ≤ 18.
 
 ## Before you finish
 

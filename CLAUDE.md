@@ -18,9 +18,11 @@ npm package. It re-derives the feature set of mature schedulers (Syncfusion EJ2 
    If you need a date operation, add it to the adapter interface and implement it in all adapters.
 3. **Tree-shakeable.** `sideEffects:false`. Views are factory functions (`dayView()`, `weekView()`…)
    so unused views are dropped by the bundler. Don't create barrel imports that pull in every view.
-4. **Standalone-first, NgModule-compatible.** Public components are `standalone: true`; also export
-   `NgModule`s for Angular 9–13 consumers. Don't use signals in core public API (compat); use RxJS in
-   the store. Signals allowed only behind version-guarded internal wrappers.
+4. **Standalone-only, signal-first (Angular 18+ floor).** Public components are `standalone: true`
+   (kept explicit — default only in v19). No `NgModule` compatibility surface. Use signal APIs in
+   components: `input()`/`output()`/`model()`, `computed()`, `effect()`, `inject()`. Partial-Ivy
+   publish stays valid (declaration `minVersion` ~17.1 ≤ the 18 floor). The published peerDep window
+   is `>=18.0.0 <23.0.0`.
 5. **Not a clone.** Original class names (`.dl-*`), original API names (see plan §4 mapping),
    original markup and docs. Never paste reference docs/markup.
 6. **Accessibility is a feature, not a polish step.** Every interactive element ships with roles,
