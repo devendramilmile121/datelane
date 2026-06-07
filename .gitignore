@@ -61,6 +61,9 @@ Thumbs.db
 *.js.map
 *.d.ts
 *.d.ts.map
+# …but keep JS config files that live at the repo root.
+!eslint.config.js
+!/*.config.js
 
 # Dependencies lock file (optional, uncomment if you want to track)
 # package-lock.json
