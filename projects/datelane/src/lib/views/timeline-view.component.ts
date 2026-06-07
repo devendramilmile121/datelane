@@ -6,10 +6,9 @@
 // Controlled: emits eventActivate / cellActivate; never mutates. Tree-shakeable.
 
 import {
-  Component, Input, Output, EventEmitter, Inject, ViewChild, ElementRef,
-  AfterViewInit, OnChanges, ChangeDetectionStrategy, ViewEncapsulation,
+  Component, input, output, inject, effect, untracked, computed, viewChild, ElementRef,
+  ChangeDetectionStrategy, ViewEncapsulation,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { DateAdapter, SCHEDULER_DATE_ADAPTER } from '../date-adapter/date-adapter';
 import { SchedulerEvent, SchedulerViewType } from '../core/models';
 import {
@@ -23,24 +22,23 @@ const ROW_PAD = 6;     // px vertical padding inside a row
 @Component({
   selector: 'dl-timeline-view',
   standalone: true,
-  imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   template: `
-    <div class="dl-tl" role="grid" [style.--dl-tl-cols]="layout.columns.length">
+    <div class="dl-tl" role="grid" [style.--dl-tl-cols]="layout().columns.length">
       <!-- Header: corner + two stacked bands (majors, then columns). -->
       <div class="dl-tl__head">
         <div class="dl-tl__corner" role="presentation">
-          @if (showResourceGutter) { <span>{{ resourceTitle }}</span> }
+          @if (showResourceGutter) { <span>{{ resourceTitle() }}</span> }
         </div>
         <div class="dl-tl__headcols">
           <div class="dl-tl__majors" role="row">
-            @for (mg of majorGroups; track mg.key) {
+            @for (mg of majorGroups(); track mg.key) {
               <div class="dl-tl__major" [style.flex-grow]="mg.span" role="columnheader">{{ mg.label }}</div>
             }
           </div>
           <div class="dl-tl__cols" role="row">
-            @for (col of layout.columns; track $index) {
+            @for (col of layout().columns; track $index) {
               <div class="dl-tl__col"
                 [class.dl-tl__col--today]="col.isToday"
                 [class.dl-tl__col--weekend]="col.isWeekend"
@@ -54,7 +52,7 @@ const ROW_PAD = 6;     // px vertical padding inside a row
       <div #scrollEl class="dl-tl__body">
         @if (showResourceGutter) {
           <div class="dl-tl__gutter">
-            @for (row of layout.rows; track $index) {
+            @for (row of layout().rows; track $index) {
               <div class="dl-tl__rhead" [style.block-size.px]="rowHeight(row)"
                 [style.padding-inline-start.px]="(row.depth || 0) * 14 + 8">
                 <span class="dl-tl__rdot" [style.background]="row.color || null" aria-hidden="true"></span>
@@ -65,10 +63,10 @@ const ROW_PAD = 6;     // px vertical padding inside a row
         }
 
         <div class="dl-tl__rows">
-          @for (row of layout.rows; track $index; let ri = $index) {
+          @for (row of layout().rows; track $index; let ri = $index) {
             <div class="dl-tl__row" role="row" [style.block-size.px]="rowHeight(row)">
               <!-- gridline cells (also the click target for empty-slot create) -->
-              @for (col of layout.columns; track $index; let ci = $index) {
+              @for (col of layout().columns; track $index; let ci = $index) {
                 <div class="dl-tl__cell"
                   [class.dl-tl__cell--today]="col.isToday"
                   [class.dl-tl__cell--weekend]="col.isWeekend"
@@ -105,58 +103,49 @@ const ROW_PAD = 6;     // px vertical padding inside a row
     </div>
   `,
 })
-export class TimelineViewComponent implements AfterViewInit, OnChanges {
-  @Input() viewType: SchedulerViewType = 'timelineWeek';
-  @Input() viewDate: unknown;
-  @Input() events: ReadonlyArray<SchedulerEvent<unknown>> = [];
+export class TimelineViewComponent {
+  readonly viewType = input<SchedulerViewType>('timelineWeek');
+  readonly viewDate = input<unknown>();
+  readonly events = input<ReadonlyArray<SchedulerEvent<unknown>>>([]);
   /** Resource rows from the shell; empty → a single default row holds all events. */
-  @Input() rows: TimelineRowInput[] = [];
-  @Input() resourceTitle = '';
-  @Input() firstDayOfWeek = 0;
-  @Input() workDays?: number[];
-  @Input() startHour = 0;
-  @Input() endHour = 24;
-  @Input() slotCount = 1;
-  @Input() interval = 1;
+  readonly rows = input<TimelineRowInput[]>([]);
+  readonly resourceTitle = input('');
+  readonly firstDayOfWeek = input(0);
+  readonly workDays = input<number[]>();
+  readonly startHour = input(0);
+  readonly endHour = input(24);
+  readonly slotCount = input(1);
+  readonly interval = input(1);
   /** Max lanes per row before "+N more"; 0 = auto-grow row height (rowAutoHeight). */
-  @Input() maxLanes = 0;
-  /** Auto-scroll horizontally to the first event on load / data change. */
-  @Input() autoScroll = true;
+  readonly maxLanes = input(0);
+  /** Auto-scroll horizontally to the first event on load / period change. */
+  readonly autoScroll = input(true);
 
-  @Output() eventActivate = new EventEmitter<SchedulerEvent<unknown>>();
-  @Output() cellActivate = new EventEmitter<{ date: unknown; resourceId?: string | number }>();
+  readonly eventActivate = output<SchedulerEvent<unknown>>();
+  readonly cellActivate = output<{ date: unknown; resourceId?: string | number }>();
 
   protected readonly LANE_H = LANE_H;
   protected readonly ROW_PAD = ROW_PAD;
 
-  @ViewChild('scrollEl') private scrollEl?: ElementRef<HTMLElement>;
-  /** Key of the period last auto-scrolled, so we don't re-scroll on event/CD churn. */
-  private lastScrollKey = '';
+  private readonly scrollEl = viewChild<ElementRef<HTMLElement>>('scrollEl');
 
-  constructor(@Inject(SCHEDULER_DATE_ADAPTER) public adapter: DateAdapter) {}
+  protected readonly adapter = inject<DateAdapter>(SCHEDULER_DATE_ADAPTER);
 
-  ngAfterViewInit(): void { this.maybeScroll(true); }
-  ngOnChanges(): void { this.maybeScroll(false); }
-
-  /** Auto-scroll only on first render or when the period/view changes — not on event churn. */
-  private maybeScroll(init: boolean): void {
-    if (!this.autoScroll) return;
-    const key = this.periodKey();
-    if (!init && key === this.lastScrollKey) return;
-    this.lastScrollKey = key;
-    this.scrollToFirst();
-  }
-
-  private periodKey(): string {
-    const base = this.viewDate ?? this.adapter.today();
-    return `${this.viewType}:${this.adapter.toNative(base).getTime()}`;
+  constructor() {
+    // Auto-scroll only on first render or when the period/view changes — not on event churn.
+    effect(() => {
+      if (!this.autoScroll()) return;
+      this.viewType();                           // track period signals
+      this.viewDate();
+      const el = this.scrollEl()?.nativeElement; // track the view query
+      if (!el) return;
+      untracked(() => this.scrollToFirst(el));
+    });
   }
 
   /** Scroll the body horizontally so the earliest event bar is near the inline-start. */
-  private scrollToFirst(): void {
-    const el = this.scrollEl?.nativeElement;
-    if (!el) return;
-    const lefts = this.layout.rows.flatMap((r) => r.bars.map((b) => b.left));
+  private scrollToFirst(el: HTMLElement): void {
+    const lefts = this.layout().rows.flatMap((r) => r.bars.map((b) => b.left));
     if (!lefts.length) return;
     const minLeft = Math.min(...lefts);
     requestAnimationFrame(() => {
@@ -178,40 +167,40 @@ export class TimelineViewComponent implements AfterViewInit, OnChanges {
   }
 
   get showResourceGutter(): boolean {
-    return this.rows.length > 0;
+    return this.rows().length > 0;
   }
 
   private get columnOpts(): TimelineColumnOptions {
     return {
-      firstDayOfWeek: this.firstDayOfWeek,
-      workDays: this.workDays,
-      startHour: this.startHour,
-      endHour: this.endHour,
-      slotCount: this.slotCount,
-      interval: this.interval,
+      firstDayOfWeek: this.firstDayOfWeek(),
+      workDays: this.workDays(),
+      startHour: this.startHour(),
+      endHour: this.endHour(),
+      slotCount: this.slotCount(),
+      interval: this.interval(),
     };
   }
 
-  get layout(): HorizontalTimeLayout {
+  readonly layout = computed<HorizontalTimeLayout>(() => {
     const columns = buildTimelineColumns(
-      this.viewType, this.viewDate ?? this.adapter.today(), this.adapter, this.columnOpts,
+      this.viewType(), this.viewDate() ?? this.adapter.today(), this.adapter, this.columnOpts,
     );
-    return layoutHorizontalTime(columns, this.rows, this.events, this.adapter, {
-      maxLanes: this.maxLanes,
+    return layoutHorizontalTime(columns, this.rows(), this.events(), this.adapter, {
+      maxLanes: this.maxLanes(),
     });
-  }
+  });
 
   /** Contiguous runs of equal `major` for the upper header band. */
-  get majorGroups(): Array<{ key: string; label: string; span: number }> {
+  readonly majorGroups = computed<Array<{ key: string; label: string; span: number }>>(() => {
     const groups: Array<{ key: string; label: string; span: number }> = [];
-    this.layout.columns.forEach((c, i) => {
+    this.layout().columns.forEach((c, i) => {
       const key = c.major ?? '';
       const last = groups[groups.length - 1];
       if (last && last.label === key) last.span++;
       else groups.push({ key: key + ':' + i, label: key, span: 1 });
     });
     return groups;
-  }
+  });
 
   rowHeight(row: { laneCount: number }): number {
     return ROW_PAD * 2 + Math.max(1, row.laneCount) * LANE_H;

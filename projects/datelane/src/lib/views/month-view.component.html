@@ -1,0 +1,86 @@
+<div class="dl-mv" role="grid" [attr.aria-rowcount]="layout.weeks.length + 1">
+  <div class="dl-mv__head" role="row">
+    @for (i of columns; track i) {
+      <div class="dl-mv__dow" role="columnheader">{{ weekdayLabel(i) }}</div>
+    }
+  </div>
+
+  <div #gridEl class="dl-mv__weeks">
+    @for (week of layout.weeks; track $index; let wi = $index) {
+      <div class="dl-mv__week" role="row">
+        <div class="dl-mv__daygrid" [style.grid-template-columns]="gridCols">
+          @for (day of visibleDays(week); track $index) {
+            <div
+              class="dl-mv__cell"
+              role="gridcell"
+              [class.dl-mv__cell--out]="!day.inMonth"
+              [class.dl-mv__cell--today]="day.isToday"
+              [class.dl-mv__cell--weekend]="day.isWeekend"
+              tabindex="0"
+              [attr.aria-label]="cellLabel(day.date)"
+              (click)="dayNavigate.emit(day.date)"
+              (keydown.enter)="dayNavigate.emit(day.date)">
+              <span class="dl-mv__num">{{ adapter.getDate(day.date) }}</span>
+              <span class="dl-mv__lanes"></span>
+              @if (day.moreCount) {
+                <button type="button" class="dl-more" (click)="openMore($event, day.date)">
+                  {{ msgs.moreEvents(day.moreCount) }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="dl-mv__bars">
+          @for (seg of week.segments; track seg.event.id + ':' + seg.startCol) {
+            @if (segGeom(seg); as geo) {
+              <div
+                class="dl-mv__bar"
+                [class.dl-mv__bar--active]="isActive(seg)"
+                [class.dl-mv__bar--before]="seg.continuesBefore"
+                [class.dl-mv__bar--after]="seg.continuesAfter"
+                role="button"
+                tabindex="0"
+                [style.inset-inline-start]="geo.left"
+                [style.inline-size]="geo.width"
+                [style.top.px]="barTop(seg)"
+                [style.--dl-event-accent]="seg.event.color || null"
+                [attr.aria-label]="barLabel(seg.event)"
+                (pointerdown)="onGestureStart($event, 'move', seg, wi, gridEl)"
+                (click)="onBarClick($event, seg.event)">
+                @if (resizable() && !seg.continuesBefore) {
+                  <span class="dl-mv__grip dl-mv__grip--start" aria-hidden="true"
+                    (pointerdown)="onGestureStart($event, 'resize-start', seg, wi, gridEl)"></span>
+                }
+                @if (!seg.event.isAllDay) { <span class="dl-mv__bardot"></span> }
+                <span class="dl-mv__bartext">{{ seg.event.subject }}</span>
+                @if (resizable() && !seg.continuesAfter) {
+                  <span class="dl-mv__grip dl-mv__grip--end" aria-hidden="true"
+                    (pointerdown)="onGestureStart($event, 'resize-end', seg, wi, gridEl)"></span>
+                }
+              </div>
+            }
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+@if (popover) {
+  <div class="dl-mv__pop" role="dialog" [style.top.px]="popover.y" [style.inset-inline-start.px]="popover.x">
+    <div class="dl-mv__pop-head">
+      <strong>{{ adapter.format(popover.date, 'dd-MMM-yyyy') }}</strong>
+      <button type="button" class="dl-mv__pop-close" [attr.aria-label]="msgs.close" (click)="popover = null">×</button>
+    </div>
+    @for (ev of popover.events; track ev.id) {
+      <button type="button" class="dl-mv__pop-item"
+        [style.--dl-event-accent]="ev.color || null"
+        (click)="onPopItem(ev)">
+        <span class="dl-mv__dot"></span>
+        <span class="dl-mv__chip-text">{{ ev.subject }}</span>
+        <span class="dl-mv__pop-time">{{ popTime(ev) }}</span>
+      </button>
+    }
+  </div>
+}

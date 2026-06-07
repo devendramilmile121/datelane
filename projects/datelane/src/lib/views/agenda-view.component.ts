@@ -4,10 +4,9 @@
 // Controlled: emits eventActivate on click; never mutates. Tree-shakeable.
 
 import {
-  Component, Input, Output, EventEmitter, Inject, ElementRef,
-  AfterViewInit, OnChanges, ChangeDetectionStrategy, ViewEncapsulation,
+  Component, input, output, inject, effect, untracked, computed, ElementRef,
+  ChangeDetectionStrategy, ViewEncapsulation,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { DateAdapter, SCHEDULER_DATE_ADAPTER } from '../date-adapter/date-adapter';
 import { SchedulerEvent } from '../core/models';
 import { layoutList, ListLayout } from '../engine/list-layout';
@@ -15,18 +14,17 @@ import { layoutList, ListLayout } from '../engine/list-layout';
 @Component({
   selector: 'dl-agenda-view',
   standalone: true,
-  imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   template: `
     <div class="dl-ag" role="list">
-      @if (!layout.days.length) {
+      @if (!layout().days.length) {
         <div class="dl-empty" role="status">
           <p class="dl-empty__title">No events</p>
-          <p class="dl-empty__hint">Nothing scheduled in the next {{ agendaDaysCount }} days.</p>
+          <p class="dl-empty__hint">Nothing scheduled in the next {{ agendaDaysCount() }} days.</p>
         </div>
       }
-      @for (day of layout.days; track trackByTime(day.date)) {
+      @for (day of layout().days; track trackByTime(day.date)) {
         <div class="dl-ag__day" role="listitem" [class.dl-ag__day--today]="day.isToday"
              [class.dl-ag__day--weekend]="day.isWeekend">
           <div class="dl-ag__date">
@@ -54,45 +52,40 @@ import { layoutList, ListLayout } from '../engine/list-layout';
     </div>
   `,
 })
-export class AgendaViewComponent implements AfterViewInit, OnChanges {
-  @Input() viewDate: unknown;
-  @Input() events: ReadonlyArray<SchedulerEvent<unknown>> = [];
-  @Input() agendaDaysCount = 7;
-  @Input() hideEmptyAgendaDays = false;
-  /** Auto-scroll the first event into view on load / data change. */
-  @Input() autoScroll = true;
+export class AgendaViewComponent {
+  readonly viewDate = input<unknown>();
+  readonly events = input<ReadonlyArray<SchedulerEvent<unknown>>>([]);
+  readonly agendaDaysCount = input(7);
+  readonly hideEmptyAgendaDays = input(false);
+  /** Auto-scroll the first event into view on load / period change. */
+  readonly autoScroll = input(true);
 
-  @Output() eventActivate = new EventEmitter<SchedulerEvent<unknown>>();
+  readonly eventActivate = output<SchedulerEvent<unknown>>();
 
-  constructor(
-    @Inject(SCHEDULER_DATE_ADAPTER) public adapter: DateAdapter,
-    private host: ElementRef<HTMLElement>,
-  ) {}
+  protected readonly adapter = inject<DateAdapter>(SCHEDULER_DATE_ADAPTER);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  private lastScrollKey = '';
-
-  ngAfterViewInit(): void { this.maybeScroll(true); }
-  ngOnChanges(): void { this.maybeScroll(false); }
-
-  /** Scroll only on first render or when the start date changes — not on event churn. */
-  private maybeScroll(init: boolean): void {
-    if (!this.autoScroll) return;
-    const base = this.viewDate ?? this.adapter.today();
-    const key = `${this.adapter.toNative(base).getTime()}:${this.agendaDaysCount}`;
-    if (!init && key === this.lastScrollKey) return;
-    this.lastScrollKey = key;
-    requestAnimationFrame(() => {
-      const first = this.host.nativeElement.querySelector('.dl-ag__event');
-      first?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  constructor() {
+    // Scroll only when the visible period changes (tracked) — never on event churn (untracked).
+    effect(() => {
+      if (!this.autoScroll()) return;
+      this.viewDate();          // track: re-scroll on navigation
+      this.agendaDaysCount();   // track: re-scroll on range change
+      untracked(() => {
+        requestAnimationFrame(() => {
+          const first = this.host.nativeElement.querySelector('.dl-ag__event');
+          first?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        });
+      });
     });
   }
 
-  get layout(): ListLayout {
-    return layoutList(this.viewDate ?? this.adapter.today(), this.events, this.adapter, {
-      dayCount: this.agendaDaysCount,
-      hideEmptyDays: this.hideEmptyAgendaDays,
-    });
-  }
+  readonly layout = computed<ListLayout>(() =>
+    layoutList(this.viewDate() ?? this.adapter.today(), this.events(), this.adapter, {
+      dayCount: this.agendaDaysCount(),
+      hideEmptyDays: this.hideEmptyAgendaDays(),
+    }),
+  );
 
   timeLabel(ev: SchedulerEvent<unknown>): string {
     if (ev.isAllDay) return 'All day';

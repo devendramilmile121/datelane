@@ -15,7 +15,7 @@ phased, step-by-step implementation roadmap.
 |------|---------------------------|
 | **Lightweight** | Core bundle small; each view ships as a separately importable, tree-shakeable provider. You only pay for the views you import. |
 | **Pluggable date layer** | Abstract `DateAdapter`; ship `Native`, `Luxon`, and `Moment` adapters as optional secondary entry points. No date library baked into core. |
-| **Wide Angular support** | One codebase, sane peer-dependency range (see §5). Standalone-first, with an `NgModule` compatibility surface for older apps. |
+| **Wide Angular support** | One codebase, sane peer-dependency range (see §5). Standalone-only, signal-first; supports Angular 18–22. |
 | **Customizable** | Templates everywhere (cell, event, header, resource, tooltip, editor), CSS-variable theming, configurable everything. |
 | **Intuitive UX** | Smooth navigation, drag/resize, keyboard + a11y, responsive/mobile layout, clean default theme. |
 | **Low dependency footprint** | Zero hard runtime deps in core except Angular peer deps. Recurrence engine is internal or an optional adapter. |
@@ -94,7 +94,7 @@ Everything below is a feature we must cover. Status column is for you to track.
 | Click a day cell (Month/Year/MonthAgenda) → navigate to Day view | ☐ |
 | Click date header in Timeline Day/Week/WorkWeek → Agenda view | ☐ |
 | Click date header in Timeline Month → Timeline Day | ☐ |
-| All-day row with expand/collapse (Day/Week/WorkWeek) | ☐ |
+| All-day row with expand/collapse (Day/Week/WorkWeek) | ☑ |
 | `+ more` overflow indicator (Month, Timeline views, Timeline Year w/o auto height) | ☐ |
 | Default editor window for create/edit, with **All-day** toggle | ☐ |
 | New event in Month defaults to all-day; toggling off → 9:00–9:30 default | ☐ |
@@ -157,16 +157,16 @@ distinct & better:
 Supporting *literally every* Angular version (2 → latest) in one build is impractical — the build
 toolchain (`ng-packagr`), Ivy, and standalone APIs differ too much. The honest, maintainable plan:
 
-- **Primary support: Angular 14+** (standalone components, modern `ng-packagr`, signals optional).
+- **Primary support: Angular 18+** (standalone-only, signal APIs, modern `ng-packagr`, partial-Ivy).
   This realistically covers the vast majority of active apps.
-- **Compatibility surface for older apps (Angular 9–13):** also export `NgModule`s
-  (`SchedulerModule`, per-view modules) so non-standalone apps can consume the same code. Avoid
-  signals in core; expose them only behind feature-detected wrappers.
+- **No NgModule compatibility surface.** Standalone-only public API; signal-first components
+  (`input()`/`output()`/`model()`, `computed()`, `effect()`, `inject()`). Apps still on NgModules
+  import the standalone components directly (Angular has supported that since v14).
 - **Peer dependencies**, never hard deps:
   ```jsonc
   "peerDependencies": {
-    "@angular/core": ">=14.0.0",
-    "@angular/common": ">=14.0.0"
+    "@angular/core": ">=18.0.0 <23.0.0",
+    "@angular/common": ">=18.0.0 <23.0.0"
   },
   "peerDependenciesMeta": {
     "luxon": { "optional": true },

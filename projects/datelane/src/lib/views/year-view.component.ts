@@ -4,10 +4,9 @@
 // Controlled: emits dayNavigate; never mutates. Tree-shakeable.
 
 import {
-  Component, Input, Output, EventEmitter, Inject, ElementRef,
-  AfterViewInit, OnChanges, ChangeDetectionStrategy, ViewEncapsulation,
+  Component, input, output, inject, effect, untracked, computed, ElementRef,
+  ChangeDetectionStrategy, ViewEncapsulation,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { DateAdapter, SCHEDULER_DATE_ADAPTER } from '../date-adapter/date-adapter';
 import { SchedulerEvent } from '../core/models';
 import { layoutYear, YearLayout } from '../engine/year-layout';
@@ -15,12 +14,11 @@ import { layoutYear, YearLayout } from '../engine/year-layout';
 @Component({
   selector: 'dl-year-view',
   standalone: true,
-  imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   template: `
-    <div class="dl-yr" [class.dl-yr--vertical]="orientation === 'vertical'" role="grid">
-      @for (mo of layout.months; track mo.month) {
+    <div class="dl-yr" [class.dl-yr--vertical]="orientation() === 'vertical'" role="grid">
+      @for (mo of layout().months; track mo.month) {
         <section class="dl-yr__month" role="group" [attr.aria-label]="monthName(mo.month)">
           <header class="dl-yr__mhead">{{ monthName(mo.month) }}</header>
           <div class="dl-yr__dow">
@@ -51,49 +49,42 @@ import { layoutYear, YearLayout } from '../engine/year-layout';
     </div>
   `,
 })
-export class YearViewComponent implements AfterViewInit, OnChanges {
-  @Input() viewDate: unknown;
-  @Input() events: ReadonlyArray<SchedulerEvent<unknown>> = [];
-  @Input() firstDayOfWeek = 0;
-  @Input() orientation: 'horizontal' | 'vertical' = 'horizontal';
-  /** Auto-scroll the first day that has events into view on load / data change. */
-  @Input() autoScroll = true;
+export class YearViewComponent {
+  readonly viewDate = input<unknown>();
+  readonly events = input<ReadonlyArray<SchedulerEvent<unknown>>>([]);
+  readonly firstDayOfWeek = input(0);
+  readonly orientation = input<'horizontal' | 'vertical'>('horizontal');
+  /** Auto-scroll the first day that has events into view on load / period change. */
+  readonly autoScroll = input(true);
 
-  @Output() dayNavigate = new EventEmitter<unknown>();
+  readonly dayNavigate = output<unknown>();
 
-  constructor(
-    @Inject(SCHEDULER_DATE_ADAPTER) public adapter: DateAdapter,
-    private host: ElementRef<HTMLElement>,
-  ) {}
+  protected readonly adapter = inject<DateAdapter>(SCHEDULER_DATE_ADAPTER);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  private lastScrollKey = '';
-
-  ngAfterViewInit(): void { this.maybeScroll(true); }
-  ngOnChanges(): void { this.maybeScroll(false); }
-
-  /** Scroll only on first render or when the year changes — not on event churn. */
-  private maybeScroll(init: boolean): void {
-    if (!this.autoScroll) return;
-    const key = String(this.adapter.getYear(this.viewDate ?? this.adapter.today()));
-    if (!init && key === this.lastScrollKey) return;
-    this.lastScrollKey = key;
-    requestAnimationFrame(() => {
-      const first = this.host.nativeElement.querySelector('.dl-yr__day--has');
-      first?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  constructor() {
+    // Scroll only when the year changes (tracked) — not on event churn (untracked).
+    effect(() => {
+      if (!this.autoScroll()) return;
+      this.viewDate(); // track: re-scroll on navigation
+      untracked(() => {
+        requestAnimationFrame(() => {
+          const first = this.host.nativeElement.querySelector('.dl-yr__day--has');
+          first?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        });
+      });
     });
   }
 
-  get layout(): YearLayout {
-    return layoutYear(this.viewDate ?? this.adapter.today(), this.events, this.adapter, {
-      firstDayOfWeek: this.firstDayOfWeek,
-    });
-  }
+  readonly layout = computed<YearLayout>(() =>
+    layoutYear(this.viewDate() ?? this.adapter.today(), this.events(), this.adapter, {
+      firstDayOfWeek: this.firstDayOfWeek(),
+    }),
+  );
 
-  get weekdayCols(): number[] {
-    return [0, 1, 2, 3, 4, 5, 6];
-  }
+  readonly weekdayCols: number[] = [0, 1, 2, 3, 4, 5, 6];
   weekdayLabel(i: number): string {
-    return this.adapter.getDayNames('narrow')[(this.firstDayOfWeek + i) % 7];
+    return this.adapter.getDayNames('narrow')[(this.firstDayOfWeek() + i) % 7];
   }
   monthName(m: number): string {
     return this.adapter.getMonthNames('long')[m];

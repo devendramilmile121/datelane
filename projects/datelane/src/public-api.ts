@@ -18,9 +18,9 @@ export * from './lib/engine/year-layout';
 export * from './lib/engine/horizontal-time-layout';
 export * from './lib/engine/timeline-columns';
 export * from './lib/engine/normalize-events';
+export * from './lib/interaction/gesture';
+export * from './lib/i18n/messages';
 export * from './lib/resources/timeline-rows';
 export * from './lib/templates/scheduler-templates';
 export * from './lib/editor/quick-view.component';
 export * from './lib/scheduler/scheduler.component';
-// NgModule compatibility wrapper for Angular 9–13 consumers:
-export * from './lib/scheduler/scheduler.module';

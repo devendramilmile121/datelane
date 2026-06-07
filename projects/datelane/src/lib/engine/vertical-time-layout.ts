@@ -23,10 +23,33 @@ export interface DayColumn<D = unknown> {
   events: PositionedEvent<D>[];
 }
 
+/** A spanning all-day event bar across one or more visible day columns (the all-day band). */
+export interface AllDaySegment<D = unknown> {
+  event: SchedulerEvent<D>;
+  /** First covered column index in the visible `days` array. */
+  startCol: number;
+  /** Number of visible columns covered (contiguous run). */
+  span: number;
+  /** Stacking lane (0-based) within the band. */
+  lane: number;
+  /** The event extends earlier than this run's first visible day. */
+  continuesBefore: boolean;
+  /** The event extends later than this run's last visible day. */
+  continuesAfter: boolean;
+}
+
+/** The all-day band above the time grid: spanning segments + how many lanes they need. */
+export interface AllDayBand<D = unknown> {
+  segments: AllDaySegment<D>[];
+  lanes: number;
+}
+
 export interface VerticalTimeLayout<D = unknown> {
   /** Hour marks (integers) drawn as gridlines/labels, from startHour..endHour inclusive. */
   hours: number[];
   columns: DayColumn<D>[];
+  /** All-day / multi-day events laid out as spanning bars above the grid. */
+  allDay: AllDayBand<D>;
   startHour: number;
   endHour: number;
 }
@@ -84,7 +107,74 @@ export function layoutVerticalTime<D>(
     return { date: day, events: positioned };
   });
 
-  return { hours, columns, startHour, endHour };
+  return { hours, columns, allDay: layoutAllDayBand(days, events, adapter), startHour, endHour };
+}
+
+/**
+ * Lay out all-day / multi-day events as spanning bars across the visible day columns.
+ * Hidden columns (e.g. weekends in Work Week) split a span into multiple contiguous runs;
+ * lanes are assigned greedily so overlapping events stack instead of colliding.
+ */
+function layoutAllDayBand<D>(
+  days: D[],
+  events: ReadonlyArray<SchedulerEvent<D>>,
+  adapter: DateAdapter<D>,
+): AllDayBand<D> {
+  if (!days.length) return { segments: [], lanes: 0 };
+
+  const dayStarts = days.map((d) => adapter.startOfDay(d));
+  const rangeStart = dayStarts[0];
+  const rangeEnd = adapter.addDays(dayStarts[dayStarts.length - 1], 1);
+  const covers = (e: SchedulerEvent<D>, i: number): boolean => {
+    const ds = dayStarts[i];
+    const de = adapter.addDays(ds, 1);
+    return adapter.compare(e.start, de) < 0 && adapter.compare(e.end, ds) > 0;
+  };
+
+  const allDay = events
+    .filter(
+      (e) =>
+        e.isAllDay &&
+        adapter.compare(e.start, rangeEnd) < 0 &&
+        adapter.compare(e.end, rangeStart) > 0,
+    )
+    .sort((a, b) => adapter.compare(a.start, b.start));
+
+  const laneEnds: number[] = []; // last covered column index per lane
+  const segments: AllDaySegment<D>[] = [];
+
+  for (const event of allDay) {
+    const cols: number[] = [];
+    for (let i = 0; i < days.length; i++) if (covers(event, i)) cols.push(i);
+    if (!cols.length) continue;
+
+    // One lane reserved for the whole min..max span so runs of the same event align.
+    const minCol = cols[0];
+    const maxCol = cols[cols.length - 1];
+    let lane = laneEnds.findIndex((end) => end < minCol);
+    if (lane === -1) { lane = laneEnds.length; laneEnds.push(maxCol); } else laneEnds[lane] = maxCol;
+
+    // Split the covered columns into contiguous runs (gaps = hidden columns).
+    let s = cols[0];
+    let prev = cols[0];
+    for (let k = 1; k <= cols.length; k++) {
+      const c = cols[k];
+      if (k === cols.length || c !== prev + 1) {
+        segments.push({
+          event,
+          startCol: s,
+          span: prev - s + 1,
+          lane,
+          continuesBefore: adapter.compare(event.start, dayStarts[s]) < 0,
+          continuesAfter: adapter.compare(event.end, adapter.addDays(dayStarts[prev], 1)) > 0,
+        });
+        s = c;
+      }
+      prev = c;
+    }
+  }
+
+  return { segments, lanes: laneEnds.length };
 }
 
 /** Greedy interval-graph column assignment so overlapping events sit side by side. */

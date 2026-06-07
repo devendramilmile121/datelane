@@ -4,10 +4,9 @@
 // daySelect; the day number drill-through emits dayNavigate. Controlled. Tree-shakeable.
 
 import {
-  Component, Input, Output, EventEmitter, Inject, OnChanges,
+  Component, input, output, inject, effect, untracked, computed, signal,
   ChangeDetectionStrategy, ViewEncapsulation,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { DateAdapter, SCHEDULER_DATE_ADAPTER } from '../date-adapter/date-adapter';
 import { SchedulerEvent } from '../core/models';
 import { countEventsOn } from '../engine/year-layout';
@@ -18,7 +17,6 @@ interface MiniDay { date: unknown; inMonth: boolean; isToday: boolean; isWeekend
 @Component({
   selector: 'dl-month-agenda-view',
   standalone: true,
-  imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   template: `
@@ -29,7 +27,7 @@ interface MiniDay { date: unknown; inMonth: boolean; isToday: boolean; isWeekend
             <span class="dl-ma__dowcell" role="columnheader">{{ weekdayLabel(i) }}</span>
           }
         </div>
-        @for (week of weeks; track $index) {
+        @for (week of weeks(); track $index) {
           <div class="dl-ma__week" role="row">
             @for (day of week; track trackByTime(day.date)) {
               <button type="button" class="dl-ma__day" role="gridcell"
@@ -49,12 +47,12 @@ interface MiniDay { date: unknown; inMonth: boolean; isToday: boolean; isWeekend
         }
       </div>
 
-      <div class="dl-ma__list" role="list" [attr.aria-label]="selectedLabel">
-        <header class="dl-ma__lhead">{{ selectedLabel }}</header>
-        @if (!selectedEvents.length) {
+      <div class="dl-ma__list" role="list" [attr.aria-label]="selectedLabel()">
+        <header class="dl-ma__lhead">{{ selectedLabel() }}</header>
+        @if (!selectedEvents().length) {
           <p class="dl-ma__none">No events</p>
         }
-        @for (ev of selectedEvents; track ev.id) {
+        @for (ev of selectedEvents(); track ev.id) {
           <button type="button" class="dl-ma__event" role="listitem"
             [style.--dl-event-accent]="ev.color || null"
             [attr.aria-label]="ariaFor(ev)"
@@ -68,33 +66,39 @@ interface MiniDay { date: unknown; inMonth: boolean; isToday: boolean; isWeekend
     </div>
   `,
 })
-export class MonthAgendaViewComponent implements OnChanges {
-  @Input() viewDate: unknown;
-  @Input() events: ReadonlyArray<SchedulerEvent<unknown>> = [];
-  @Input() firstDayOfWeek = 0;
+export class MonthAgendaViewComponent {
+  readonly viewDate = input<unknown>();
+  readonly events = input<ReadonlyArray<SchedulerEvent<unknown>>>([]);
+  readonly firstDayOfWeek = input(0);
 
-  @Output() dayNavigate = new EventEmitter<unknown>();
-  @Output() daySelect = new EventEmitter<unknown>();
-  @Output() eventActivate = new EventEmitter<SchedulerEvent<unknown>>();
+  readonly dayNavigate = output<unknown>();
+  readonly daySelect = output<unknown>();
+  readonly eventActivate = output<SchedulerEvent<unknown>>();
 
-  private selected: unknown;
+  protected readonly adapter = inject<DateAdapter>(SCHEDULER_DATE_ADAPTER);
 
-  constructor(@Inject(SCHEDULER_DATE_ADAPTER) public adapter: DateAdapter) {}
+  private readonly selected = signal<unknown>(undefined);
 
-  ngOnChanges(): void {
-    // Keep selection within the visible month; default to viewDate (or today).
-    const base = this.viewDate ?? this.adapter.today();
-    if (!this.selected || this.adapter.getMonth(this.selected) !== this.adapter.getMonth(base)) {
-      this.selected = this.adapter.startOfDay(base);
-    }
+  constructor() {
+    // Keep selection within the visible month; default to viewDate (or today) when it drifts.
+    effect(() => {
+      const base = this.viewDate() ?? this.adapter.today();
+      untracked(() => {
+        const sel = this.selected();
+        if (!sel || this.adapter.getMonth(sel) !== this.adapter.getMonth(base)) {
+          this.selected.set(this.adapter.startOfDay(base));
+        }
+      });
+    });
   }
 
-  get weeks(): MiniDay[][] {
-    const base = this.viewDate ?? this.adapter.today();
+  readonly weeks = computed<MiniDay[][]>(() => {
+    const base = this.viewDate() ?? this.adapter.today();
+    const events = this.events();
     const month = this.adapter.getMonth(base);
     const today = this.adapter.today();
     const monthStart = this.adapter.startOfMonth(base);
-    let weekStart = this.adapter.startOfWeek(monthStart, this.firstDayOfWeek);
+    let weekStart = this.adapter.startOfWeek(monthStart, this.firstDayOfWeek());
     const out: MiniDay[][] = [];
     for (let w = 0; w < 6; w++) {
       const row: MiniDay[] = [];
@@ -106,33 +110,35 @@ export class MonthAgendaViewComponent implements OnChanges {
           inMonth: this.adapter.getMonth(date) === month,
           isToday: this.adapter.isSameDay(date, today),
           isWeekend: dow === 0 || dow === 6,
-          count: countEventsOn(date, this.events, this.adapter),
+          count: countEventsOn(date, events, this.adapter),
         });
       }
       out.push(row);
       weekStart = this.adapter.addDays(weekStart, 7);
     }
     return out;
-  }
+  });
 
-  get selectedEvents(): SchedulerEvent<unknown>[] {
-    const day = this.selected ?? this.adapter.today();
-    return layoutList(day, this.events, this.adapter, { dayCount: 1 }).days[0]?.events ?? [];
-  }
-  get selectedLabel(): string {
-    return this.adapter.format(this.selected ?? this.adapter.today(), 'EEEE, dd MMMM yyyy');
-  }
+  readonly selectedEvents = computed<SchedulerEvent<unknown>[]>(() => {
+    const day = this.selected() ?? this.adapter.today();
+    return layoutList(day, this.events(), this.adapter, { dayCount: 1 }).days[0]?.events ?? [];
+  });
+  readonly selectedLabel = computed<string>(() =>
+    this.adapter.format(this.selected() ?? this.adapter.today(), 'EEEE, dd MMMM yyyy'),
+  );
 
-  get weekdayCols(): number[] { return [0, 1, 2, 3, 4, 5, 6]; }
+  readonly weekdayCols: number[] = [0, 1, 2, 3, 4, 5, 6];
   weekdayLabel(i: number): string {
-    return this.adapter.getDayNames('narrow')[(this.firstDayOfWeek + i) % 7];
+    return this.adapter.getDayNames('narrow')[(this.firstDayOfWeek() + i) % 7];
   }
   isSelected(d: unknown): boolean {
-    return !!this.selected && this.adapter.isSameDay(d, this.selected);
+    const sel = this.selected();
+    return !!sel && this.adapter.isSameDay(d, sel);
   }
   select(d: unknown): void {
-    this.selected = this.adapter.startOfDay(d);
-    this.daySelect.emit(this.selected);
+    const day = this.adapter.startOfDay(d);
+    this.selected.set(day);
+    this.daySelect.emit(day);
   }
   dayLabel(date: unknown, count: number): string {
     const base = this.adapter.format(date, 'dd-MMM-yyyy');
