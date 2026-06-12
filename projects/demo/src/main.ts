@@ -49,22 +49,7 @@ const dom = (day: number, h = 0, m = 0) => {
       the built-in quick-view — its Edit button emits <code>(eventEdit)</code> so YOU open your form.
       Last: <strong>{{ lastChange || '—' }}</strong>
     </p>
-    <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:12px">
-      @for (v of switchable; track v) {
-        <button
-          type="button"
-          (click)="view = v"
-          [style.font]="'500 12px system-ui'"
-          [style.padding]="'5px 10px'"
-          [style.border]="'1px solid ' + (view === v ? '#2563eb' : '#cdd2d9')"
-          [style.borderRadius]="'6px'"
-          [style.background]="view === v ? '#e8effe' : '#fff'"
-          [style.color]="view === v ? '#2563eb' : '#1c2024'"
-          [style.cursor]="'pointer'">
-          {{ v }}
-        </button>
-      }
-    </div>
+    <!-- The scheduler's built-in header provides the view switcher (driven by [views]). -->
     <dl-scheduler
       [(activeView)]="view"
       [views]="views"
@@ -102,10 +87,6 @@ const dom = (day: number, h = 0, m = 0) => {
 })
 export class AppComponent {
   view: SchedulerViewType = 'week';
-  switchable: SchedulerViewType[] = [
-    'day', 'week', 'workWeek', 'month', 'year', 'agenda', 'monthAgenda',
-    'timelineDay', 'timelineWeek', 'timelineMonth', 'timelineYear',
-  ];
 
   resources: ResourceDefinition[] = [
     {
