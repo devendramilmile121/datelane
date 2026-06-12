@@ -38,6 +38,7 @@
 // ---- Header --------------------------------------------------------------
 .dl-header {
   display: flex;
+  flex: 0 0 auto; // never let the header shrink/grow vertically in the shell column
   align-items: center;
   gap: var(--dl-space-4);
   padding-inline: var(--dl-space-5);
@@ -49,6 +50,13 @@
   background: var(--dl-surface);
 }
 .dl-header__title {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  // Keep the range label on one line so a longer label (e.g. "Jun 12, 2026" vs "June 2026")
+  // can't wrap and change the header height between views; truncate instead.
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-weight: var(--dl-fw-semibold);
   font-variant-numeric: tabular-nums;
   color: var(--dl-text);
@@ -63,6 +71,8 @@
 .dl-header__view {
   appearance: none;
   cursor: pointer;
+  flex: 0 0 auto;
+  white-space: nowrap; // labels like "Work Week" stay one line → uniform 32px button height
   border: 1px solid var(--dl-border);
   background: var(--dl-surface);
   color: var(--dl-text);
