@@ -8,6 +8,7 @@
   "homepage": "https://github.com/devendramilmile121/datelane#readme",
   "bugs": { "url": "https://github.com/devendramilmile121/datelane/issues" },
   "sideEffects": false,
+  "publishConfig": { "access": "public" },
   "peerDependencies": {
     "@angular/core": ">=18.0.0 <23.0.0",
     "@angular/common": ">=18.0.0 <23.0.0",

@@ -71,26 +71,33 @@ jobs:
   # Gated on the event being a push to main (i.e. a merged PR), after quality
   # gates + the full compat matrix pass. Skips cleanly if the version in
   # package.json is already on npm, so an unbumped merge doesn't fail.
+  #
+  # Auth uses npm Trusted Publishing (OIDC) — no NPM_TOKEN secret. The job's
+  # OIDC id-token is exchanged for a short-lived publish credential, and npm
+  # records build provenance automatically. Requires:
+  #   • npm >= 11.5.1 (we upgrade below; Node 20 ships an older npm).
+  #   • A Trusted Publisher configured on npmjs.com for @datelane/core,
+  #     pointing at this repo + workflow file (.github/workflows/ci.yml).
   publish:
     needs: [build, compat]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write   # npm provenance
+      id-token: write   # OIDC — trusted publishing + provenance
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
+      - name: Upgrade npm (OIDC trusted publishing needs >= 11.5.1)
+        run: npm install -g npm@latest
       - uses: actions/download-artifact@v4
         with:
           name: datelane-core-tarball
           path: artifacts
       - name: Publish if version is new
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           TARBALL=$(ls "$PWD"/artifacts/*.tgz | head -n1)
           tar -xzO -f "$TARBALL" package/package.json > pkg.json
@@ -100,5 +107,6 @@ jobs:
           if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
             echo "::notice::$NAME@$VERSION already published — skipping."
           else
-            npm publish "$TARBALL" --access public --provenance
+            # No --provenance flag needed: OIDC publish emits provenance by default.
+            npm publish "$TARBALL" --access public
           fi
