@@ -46,15 +46,24 @@ Thumbs.db
 .env.local
 .env.*.local
 
-# Markdown files (except README)
+# Markdown files (except project docs + AI-agent config)
 *.md
 !README.md
+!CHANGELOG.md
+!CLAUDE.md
+!AGENTS.md
+!scheduler-plan.md
+!DESIGN-SYSTEM.md
+!.claude/**/*.md
 
 # Build artifacts
 *.js
 *.js.map
 *.d.ts
 *.d.ts.map
+# …but keep JS config files that live at the repo root.
+!eslint.config.js
+!/*.config.js
 
 # Dependencies lock file (optional, uncomment if you want to track)
 # package-lock.json

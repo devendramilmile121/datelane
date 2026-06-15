@@ -6,19 +6,19 @@
 // be hidden. Controlled: emits, never mutates. Tree-shakeable.
 
 import {
-  Component, Input, Output, EventEmitter, Inject, HostListener, ChangeDetectorRef,
+  Component, input, output, inject, ChangeDetectorRef,
   ChangeDetectionStrategy, ViewEncapsulation,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { DateAdapter, SCHEDULER_DATE_ADAPTER } from '../date-adapter/date-adapter';
 import { SchedulerEvent } from '../core/models';
-import { layoutMonth, MonthLayout, MonthSegment } from '../engine/month-layout';
+import { layoutMonth, MonthLayout, MonthSegment, MonthWeek, MonthDay } from '../engine/month-layout';
+import {
+  GestureMode, clamp, crossedDragThreshold, cellIndexFromOffset,
+} from '../interaction/gesture';
+import { SCHEDULER_MESSAGES } from '../i18n/messages';
 
-const DRAG_THRESHOLD_PX = 4;
 const NUMBER_H = 26; // px reserved at cell top for the day number (matches CSS var)
 const LANE_H = 20;   // px per lane (matches CSS var)
-
-type GestureMode = 'move' | 'resize-start' | 'resize-end';
 
 interface Gesture {
   mode: GestureMode;
@@ -54,130 +54,44 @@ interface Popover {
 @Component({
   selector: 'dl-month-view',
   standalone: true,
-  imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  template: `
-    <div class="dl-mv" role="grid" [attr.aria-rowcount]="layout.weeks.length + 1">
-      <div class="dl-mv__head" role="row">
-        @for (i of columns; track i) {
-          <div class="dl-mv__dow" role="columnheader">{{ weekdayLabel(i) }}</div>
-        }
-      </div>
-
-      <div #gridEl class="dl-mv__weeks">
-        @for (week of layout.weeks; track $index; let wi = $index) {
-          <div class="dl-mv__week" role="row">
-            <div class="dl-mv__daygrid" [style.grid-template-columns]="gridCols">
-              @for (i of columns; track i) {
-                @let day = week.days[i];
-                <div
-                  class="dl-mv__cell"
-                  role="gridcell"
-                  [class.dl-mv__cell--out]="!day.inMonth"
-                  [class.dl-mv__cell--today]="day.isToday"
-                  [class.dl-mv__cell--weekend]="day.isWeekend"
-                  tabindex="0"
-                  [attr.aria-label]="cellLabel(day.date)"
-                  (click)="dayNavigate.emit(day.date)"
-                  (keydown.enter)="dayNavigate.emit(day.date)">
-                  <span class="dl-mv__num">{{ adapter.getDate(day.date) }}</span>
-                  <span class="dl-mv__lanes"></span>
-                  @if (day.moreCount) {
-                    <button type="button" class="dl-more" (click)="openMore($event, day.date)">
-                      +{{ day.moreCount }} more
-                    </button>
-                  }
-                </div>
-              }
-            </div>
-
-            <div class="dl-mv__bars">
-              @for (seg of week.segments; track seg.event.id + ':' + seg.startCol) {
-                @let geo = segGeom(seg);
-                @if (geo) {
-                  <div
-                    class="dl-mv__bar"
-                    [class.dl-mv__bar--active]="isActive(seg)"
-                    [class.dl-mv__bar--before]="seg.continuesBefore"
-                    [class.dl-mv__bar--after]="seg.continuesAfter"
-                    role="button"
-                    tabindex="0"
-                    [style.inset-inline-start]="geo.left"
-                    [style.inline-size]="geo.width"
-                    [style.top.px]="barTop(seg)"
-                    [style.--dl-event-accent]="seg.event.color || null"
-                    [attr.aria-label]="barLabel(seg.event)"
-                    (pointerdown)="onGestureStart($event, 'move', seg, wi, gridEl)"
-                    (click)="onBarClick($event, seg.event)">
-                    @if (resizable && !seg.continuesBefore) {
-                      <span class="dl-mv__grip dl-mv__grip--start" aria-hidden="true"
-                        (pointerdown)="onGestureStart($event, 'resize-start', seg, wi, gridEl)"></span>
-                    }
-                    @if (!seg.event.isAllDay) { <span class="dl-mv__bardot"></span> }
-                    <span class="dl-mv__bartext">{{ seg.event.subject }}</span>
-                    @if (resizable && !seg.continuesAfter) {
-                      <span class="dl-mv__grip dl-mv__grip--end" aria-hidden="true"
-                        (pointerdown)="onGestureStart($event, 'resize-end', seg, wi, gridEl)"></span>
-                    }
-                  </div>
-                }
-              }
-            </div>
-          </div>
-        }
-      </div>
-    </div>
-
-    @if (popover) {
-      <div class="dl-mv__pop" role="dialog" [style.top.px]="popover.y" [style.inset-inline-start.px]="popover.x">
-        <div class="dl-mv__pop-head">
-          <strong>{{ adapter.format(popover.date, 'dd-MMM-yyyy') }}</strong>
-          <button type="button" class="dl-mv__pop-close" aria-label="Close" (click)="popover = null">×</button>
-        </div>
-        @for (ev of popover.events; track ev.id) {
-          <button type="button" class="dl-mv__pop-item"
-            [style.--dl-event-accent]="ev.color || null"
-            (click)="onPopItem(ev)">
-            <span class="dl-mv__dot"></span>
-            <span class="dl-mv__chip-text">{{ ev.subject }}</span>
-            <span class="dl-mv__pop-time">{{ popTime(ev) }}</span>
-          </button>
-        }
-      </div>
-    }
-  `,
+  host: {
+    '(document:click)': 'onDocClick($event)',
+    '(document:keydown.escape)': 'onEscape()',
+  },
+  templateUrl: './month-view.component.html',
 })
 export class MonthViewComponent {
-  @Input() viewDate: unknown;
-  @Input() events: ReadonlyArray<SchedulerEvent<unknown>> = [];
-  @Input() firstDayOfWeek = 0;
-  @Input() showWeekend = true;
-  @Input() maxLanes = 3;
-  @Input() draggable = true;
-  @Input() resizable = true;
+  readonly viewDate = input<unknown>();
+  readonly events = input<ReadonlyArray<SchedulerEvent<unknown>>>([]);
+  readonly firstDayOfWeek = input(0);
+  readonly showWeekend = input(true);
+  readonly maxLanes = input(3);
+  readonly draggable = input(true);
+  readonly resizable = input(true);
 
-  @Output() dayNavigate = new EventEmitter<unknown>();
-  @Output() eventActivate = new EventEmitter<SchedulerEvent<unknown>>();
+  readonly dayNavigate = output<unknown>();
+  readonly eventActivate = output<SchedulerEvent<unknown>>();
   /** Proposed move/resize result (clone with new start/end). Host applies it. */
-  @Output() eventChange = new EventEmitter<SchedulerEvent<unknown>>();
+  readonly eventChange = output<SchedulerEvent<unknown>>();
 
   gesture: Gesture | null = null;
   popover: Popover | null = null;
   /** True right after a drag so the trailing click doesn't also select the event. */
   private justDragged = false;
 
-  constructor(
-    @Inject(SCHEDULER_DATE_ADAPTER) public adapter: DateAdapter,
-    private cdr: ChangeDetectorRef,
-  ) {}
+  protected readonly adapter = inject<DateAdapter>(SCHEDULER_DATE_ADAPTER);
+  protected readonly msgs = inject(SCHEDULER_MESSAGES);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   /** Visible week-column indexes (0–6 from firstDayOfWeek), weekends dropped when hidden. */
   get columns(): number[] {
     const all = [0, 1, 2, 3, 4, 5, 6];
-    if (this.showWeekend) return all;
+    if (this.showWeekend()) return all;
+    const fdow = this.firstDayOfWeek();
     return all.filter((i) => {
-      const dow = (this.firstDayOfWeek + i) % 7;
+      const dow = (fdow + i) % 7;
       return dow !== 0 && dow !== 6;
     });
   }
@@ -187,20 +101,26 @@ export class MonthViewComponent {
     return `repeat(${this.columns.length}, 1fr)`;
   }
 
+  /** A week's day cells in the visible column order (weekends dropped when hidden). */
+  visibleDays(week: MonthWeek): MonthDay[] {
+    return this.columns.map((i) => week.days[i]);
+  }
+
   /** Layout — live-reflows with the previewed event while a gesture is active. */
   get layout(): MonthLayout {
     const g = this.gesture;
+    const source = this.events();
     const events = g?.active
-      ? this.events.map((e) => (e.id === g.id ? { ...e, start: g.newStart, end: g.newEnd } : e))
-      : this.events;
-    return layoutMonth(this.viewDate ?? this.adapter.today(), events, this.adapter, {
-      firstDayOfWeek: this.firstDayOfWeek,
-      maxLanes: this.maxLanes,
+      ? source.map((e) => (e.id === g.id ? { ...e, start: g.newStart, end: g.newEnd } : e))
+      : source;
+    return layoutMonth(this.viewDate() ?? this.adapter.today(), events, this.adapter, {
+      firstDayOfWeek: this.firstDayOfWeek(),
+      maxLanes: this.maxLanes(),
     });
   }
 
   weekdayLabel(i: number): string {
-    return this.adapter.getDayNames('short')[(this.firstDayOfWeek + i) % 7];
+    return this.adapter.getDayNames('short')[(this.firstDayOfWeek() + i) % 7];
   }
   cellLabel(date: unknown): string {
     return this.adapter.format(date, 'dd-MMM-yyyy');
@@ -245,16 +165,17 @@ export class MonthViewComponent {
     ev: PointerEvent, mode: GestureMode, seg: MonthSegment, wi: number, gridEl: HTMLElement,
   ): void {
     if (ev.button !== 0) return;
-    if (mode === 'move' && !this.draggable) return;
-    if (mode !== 'move' && !this.resizable) return;
+    if (mode === 'move' && !this.draggable()) return;
+    if (mode !== 'move' && !this.resizable()) return;
     ev.stopPropagation();
     this.justDragged = false;
     document.addEventListener('pointermove', this.onDocMove);
     document.addEventListener('pointerup', this.onDocUp);
 
     const rect = gridEl.getBoundingClientRect();
-    const rows = this.layout.weeks.length;
-    const gridStart = this.layout.weeks[0].days[0].date;
+    const layout = this.layout;
+    const rows = layout.weeks.length;
+    const gridStart = layout.weeks[0].days[0].date;
     const e = seg.event;
     this.gesture = {
       mode,
@@ -285,13 +206,13 @@ export class MonthViewComponent {
     const g = this.gesture;
     if (!g) return;
     if (!g.active) {
-      if (Math.hypot(ev.clientX - g.startX, ev.clientY - g.startY) < DRAG_THRESHOLD_PX) return;
+      if (!crossedDragThreshold(ev.clientX - g.startX, ev.clientY - g.startY)) return;
       g.active = true;
     }
     // Pointer → visible column → actual week-column → grid day index.
-    const renderedCol = clamp(Math.floor((ev.clientX - g.gridLeft) / g.cellW), 0, this.columns.length - 1);
+    const renderedCol = cellIndexFromOffset(ev.clientX - g.gridLeft, g.cellW, this.columns.length);
     const weekCol = this.columns[renderedCol];
-    const row = clamp(Math.floor((ev.clientY - g.gridTop) / g.rowH), 0, g.rows - 1);
+    const row = cellIndexFromOffset(ev.clientY - g.gridTop, g.rowH, g.rows);
     g.targetIndex = row * 7 + weekCol;
     this.applyResult(g);
     ev.preventDefault();
@@ -351,7 +272,7 @@ export class MonthViewComponent {
     const rect = (domEvent.currentTarget as HTMLElement).getBoundingClientRect();
     const dayStart = this.adapter.startOfDay(date);
     const dayEnd = this.adapter.addDays(dayStart, 1);
-    const events = this.events
+    const events = this.events()
       .filter((e) => this.adapter.compare(e.start, dayEnd) < 0 && this.adapter.compare(e.end, dayStart) > 0)
       .slice()
       .sort((a, b) => (a.isAllDay === b.isAllDay
@@ -363,7 +284,6 @@ export class MonthViewComponent {
     this.eventActivate.emit(ev);
   }
 
-  @HostListener('document:click', ['$event'])
   onDocClick(ev: Event): void {
     if (!this.popover) return;
     const t = ev.target as HTMLElement;
@@ -371,13 +291,8 @@ export class MonthViewComponent {
     this.popover = null;
   }
 
-  @HostListener('document:keydown.escape')
   onEscape(): void {
     if (this.gesture) this.endGesture();
     this.popover = null;
   }
-}
-
-function clamp(n: number, lo: number, hi: number): number {
-  return Math.min(Math.max(n, lo), hi);
 }

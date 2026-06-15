@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ---- Quality gates + build the publishable tarball -----------------------
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Pack tarball
+        run: mkdir -p "$GITHUB_WORKSPACE/artifacts" && cd dist/datelane && npm pack --pack-destination "$GITHUB_WORKSPACE/artifacts"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: datelane-core-tarball
+          path: artifacts/*.tgz
+
+  # ---- Cross-version compatibility matrix ----------------------------------
+  # Proves the partial-Ivy library links + AOT-compiles on each supported Angular major.
+  # All five (18–22) are published and verified green. `fail-fast: false` so one version's
+  # failure surfaces every version's result rather than cancelling the run.
+  compat:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Each Angular major pins the Node version its CLI requires. Angular 22's
+        # CLI needs Node >= 22.22.3, so it can't share Node 20 with the others.
+        include:
+          - angular: '18'
+            node: '20'
+          - angular: '19'
+            node: '20'
+          - angular: '20'
+            node: '20'
+          - angular: '21'
+            node: '22'
+          - angular: '22'
+            node: '22'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - uses: actions/download-artifact@v4
+        with:
+          name: datelane-core-tarball
+          path: artifacts
+      - name: Verify against Angular ${{ matrix.angular }}
+        run: |
+          TARBALL=$(ls artifacts/*.tgz | head -n1)
+          bash scripts/verify-angular.sh "${{ matrix.angular }}" "$TARBALL"
+
+  # ---- Publish to npm — ONLY on merge/push to main -------------------------
+  # Gated on the event being a push to main (i.e. a merged PR), after quality
+  # gates + the full compat matrix pass. Skips cleanly if the version in
+  # package.json is already on npm, so an unbumped merge doesn't fail.
+  publish:
+    needs: [build, compat]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # npm provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+      - uses: actions/download-artifact@v4
+        with:
+          name: datelane-core-tarball
+          path: artifacts
+      - name: Publish if version is new
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          TARBALL=$(ls artifacts/*.tgz | head -n1)
+          tar -xzO -f "$TARBALL" package/package.json > pkg.json
+          NAME=$(node -p "require('./pkg.json').name")
+          VERSION=$(node -p "require('./pkg.json').version")
+          echo "Resolved $NAME@$VERSION"
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "::notice::$NAME@$VERSION already published — skipping."
+          else
+            npm publish "$TARBALL" --access public --provenance
+          fi

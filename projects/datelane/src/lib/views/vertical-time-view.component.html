@@ -1,0 +1,117 @@
+<div class="dl-vt" role="grid" [attr.aria-rowcount]="layout().hours.length">
+  <!-- Fixed header row: time-gutter corner + one cell per day. -->
+  <div class="dl-vt__headrow">
+    <div class="dl-vt__corner" role="presentation"></div>
+    <div class="dl-vt__heads">
+      @for (col of layout().columns; track trackByTime(col.date)) {
+        <div class="dl-vt__head" role="columnheader" [class.dl-vt__head--today]="isToday(col.date)">
+          <span class="dl-vt__dow">{{ dayName(col.date) }}</span>
+          <span class="dl-vt__dom">{{ adapter.getDate(col.date) }}</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- All-day band: multi-day / all-day events as spanning bars above the time grid. -->
+  @if (layout().allDay.lanes) {
+    <div class="dl-vt__allday" role="row">
+      <div class="dl-vt__allday-gutter" role="rowheader">
+        <span class="dl-vt__allday-label">{{ msgs.allDay }}</span>
+        @if (allDayCanToggle()) {
+          <button type="button" class="dl-vt__allday-toggle"
+            [attr.aria-expanded]="allDayExpanded()"
+            (click)="toggleAllDay()">
+            {{ allDayExpanded() ? msgs.showLess : msgs.moreEvents(allDayHiddenCount()) }}
+          </button>
+        }
+      </div>
+      <div class="dl-vt__allday-cols" [style.block-size.px]="allDayBandHeight()">
+        @for (seg of allDayVisibleSegments(); track seg.event.id + ':' + seg.startCol) {
+          @if (allDayGeom(seg); as g) {
+            <button
+              type="button"
+              class="dl-vt__allday-bar"
+              [class.dl-vt__allday-bar--before]="seg.continuesBefore"
+              [class.dl-vt__allday-bar--after]="seg.continuesAfter"
+              [style.inset-inline-start]="g.left"
+              [style.inline-size]="g.width"
+              [style.top.px]="allDayTop(seg)"
+              [style.--dl-event-accent]="seg.event.color || null"
+              [attr.aria-label]="allDayAria(seg.event)"
+              (click)="eventActivate.emit(seg.event)">
+              <span class="dl-vt__allday-dot" aria-hidden="true"></span>
+              <span class="dl-vt__allday-text">{{ seg.event.subject }}</span>
+            </button>
+          }
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Scrollable body: time gutter + day columns scroll together vertically. -->
+  <div #scrollEl class="dl-vt__scroll">
+    <div class="dl-vt__grid">
+      <div class="dl-vt__gutter">
+        @for (h of layout().hours; track h) {
+          <div class="dl-vt__hour" [style.height.px]="slotHeight()">
+            <span class="dl-vt__time">{{ hourLabel(h) }}</span>
+          </div>
+        }
+        <!-- Closing boundary label (e.g. 24:00) at the bottom edge. -->
+        <div class="dl-vt__hour-end">
+          <span class="dl-vt__time">{{ hourLabel(endHour()) }}</span>
+        </div>
+      </div>
+
+      <div class="dl-vt__body">
+        @for (col of layout().columns; track trackByTime(col.date); let ci = $index) {
+          <div #colEl class="dl-vt__col" role="gridcell" [class.dl-vt__col--today]="isToday(col.date)">
+            @for (h of layout().hours; track h) {
+              <div class="dl-vt__slot" [style.height.px]="slotHeight()"></div>
+            }
+
+            @if (nowLineTop(col.date); as top) {
+              <div class="dl-now-line" [style.top.%]="top" aria-hidden="true"></div>
+            }
+
+            @for (pe of col.events; track pe.event.id) {
+              <div
+                class="dl-event"
+                [class.dl-event--active]="isActive(pe.event)"
+                [class.dl-event--compact]="isShort(pe.event)"
+                role="button"
+                tabindex="0"
+                [style.top.%]="eventTop(pe)"
+                [style.height.%]="eventHeight(pe)"
+                [style.inline-size]="widthCss(pe)"
+                [style.inset-inline-start]="leftCss(pe)"
+                [style.transform]="moveTransform(pe.event)"
+                [style.--dl-event-accent]="pe.event.color || null"
+                [attr.aria-label]="ariaFor(pe.event)"
+                [attr.title]="ariaFor(pe.event)"
+                (pointerdown)="onGestureStart($event, 'move', pe, ci, colEl)"
+                (pointermove)="onGestureMove($event)"
+                (pointerup)="onGestureEnd($event)"
+                (pointercancel)="onGestureCancel()">
+                @if (resizable()) {
+                  <span
+                    class="dl-event__grip dl-event__grip--start"
+                    aria-hidden="true"
+                    (pointerdown)="onGestureStart($event, 'resize-start', pe, ci, colEl)"></span>
+                }
+                <span class="dl-event__title">{{ pe.event.subject }}</span>
+                <span class="dl-event__time">{{ gestureTimeRange(pe) }}</span>
+                @if (resizable()) {
+                  <span
+                    class="dl-event__grip dl-event__grip--end"
+                    aria-hidden="true"
+                    (pointerdown)="onGestureStart($event, 'resize-end', pe, ci, colEl)"></span>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

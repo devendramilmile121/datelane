@@ -3,19 +3,21 @@
 // absolutely-positioned events, a now-line, and pointer drag-to-move + resize. Tree-shakeable.
 
 import {
-  Component, Input, Output, EventEmitter, Inject, HostListener,
+  Component, input, output, inject, effect, untracked, computed, signal, viewChild, ElementRef,
   ChangeDetectionStrategy, ViewEncapsulation,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { DateAdapter, SCHEDULER_DATE_ADAPTER } from '../date-adapter/date-adapter';
 import { SchedulerEvent } from '../core/models';
 import {
-  layoutVerticalTime, VerticalTimeLayout, PositionedEvent,
+  layoutVerticalTime, VerticalTimeLayout, PositionedEvent, AllDaySegment,
 } from '../engine/vertical-time-layout';
+import {
+  GestureMode, clamp, crossedDragThreshold, snapMinutesFromDeltaY, columnFromDeltaX,
+} from '../interaction/gesture';
+import { SCHEDULER_MESSAGES } from '../i18n/messages';
 
-const DRAG_THRESHOLD_PX = 4;
-
-type GestureMode = 'move' | 'resize-start' | 'resize-end';
+/** Pixel height of one all-day band lane (matches CSS). */
+const ALLDAY_LANE_H = 22;
 
 interface Gesture {
   mode: GestureMode;
@@ -40,124 +42,144 @@ interface Gesture {
 @Component({
   selector: 'dl-vertical-time-view',
   standalone: true,
-  imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  template: `
-    <div class="dl-vt" role="grid" [attr.aria-rowcount]="layout.hours.length">
-      <!-- Fixed header row: time-gutter corner + one cell per day. -->
-      <div class="dl-vt__headrow">
-        <div class="dl-vt__corner" role="presentation"></div>
-        <div class="dl-vt__heads">
-          @for (col of layout.columns; track trackByTime(col.date)) {
-            <div class="dl-vt__head" role="columnheader" [class.dl-vt__head--today]="isToday(col.date)">
-              <span class="dl-vt__dow">{{ dayName(col.date) }}</span>
-              <span class="dl-vt__dom">{{ adapter.getDate(col.date) }}</span>
-            </div>
-          }
-        </div>
-      </div>
-
-      <!-- Scrollable body: time gutter + day columns scroll together vertically. -->
-      <div class="dl-vt__scroll">
-        <div class="dl-vt__grid">
-          <div class="dl-vt__gutter">
-            @for (h of layout.hours; track h) {
-              <div class="dl-vt__hour" [style.height.px]="slotHeight">
-                <span class="dl-vt__time">{{ hourLabel(h) }}</span>
-              </div>
-            }
-            <!-- Closing boundary label (e.g. 24:00) at the bottom edge. -->
-            <div class="dl-vt__hour-end">
-              <span class="dl-vt__time">{{ hourLabel(endHour) }}</span>
-            </div>
-          </div>
-
-          <div class="dl-vt__body">
-            @for (col of layout.columns; track trackByTime(col.date); let ci = $index) {
-              <div #colEl class="dl-vt__col" role="gridcell" [class.dl-vt__col--today]="isToday(col.date)">
-                @for (h of layout.hours; track h) {
-                  <div class="dl-vt__slot" [style.height.px]="slotHeight"></div>
-                }
-
-                @if (nowLineTop(col.date); as top) {
-                  <div class="dl-now-line" [style.top.%]="top" aria-hidden="true"></div>
-                }
-
-                @for (pe of col.events; track pe.event.id) {
-                  <div
-                    class="dl-event"
-                    [class.dl-event--active]="isActive(pe.event)"
-                    [class.dl-event--compact]="isShort(pe.event)"
-                    role="button"
-                    tabindex="0"
-                    [style.top.%]="eventTop(pe)"
-                    [style.height.%]="eventHeight(pe)"
-                    [style.inline-size]="widthCss(pe)"
-                    [style.inset-inline-start]="leftCss(pe)"
-                    [style.transform]="moveTransform(pe.event)"
-                    [style.--dl-event-accent]="pe.event.color || null"
-                    [attr.aria-label]="ariaFor(pe.event)"
-                    [attr.title]="ariaFor(pe.event)"
-                    (pointerdown)="onGestureStart($event, 'move', pe, ci, colEl)"
-                    (pointermove)="onGestureMove($event)"
-                    (pointerup)="onGestureEnd($event)"
-                    (pointercancel)="onGestureCancel()">
-                    @if (resizable) {
-                      <span
-                        class="dl-event__grip dl-event__grip--start"
-                        aria-hidden="true"
-                        (pointerdown)="onGestureStart($event, 'resize-start', pe, ci, colEl)"></span>
-                    }
-                    <span class="dl-event__title">{{ pe.event.subject }}</span>
-                    <span class="dl-event__time">{{ gestureTimeRange(pe) }}</span>
-                    @if (resizable) {
-                      <span
-                        class="dl-event__grip dl-event__grip--end"
-                        aria-hidden="true"
-                        (pointerdown)="onGestureStart($event, 'resize-end', pe, ci, colEl)"></span>
-                    }
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        </div>
-      </div>
-    </div>
-  `,
+  host: { '(document:keydown.escape)': 'onEscape()' },
+  templateUrl: './vertical-time-view.component.html',
 })
 export class VerticalTimeViewComponent {
   /** Visible day dates (adapter date type), already in display order. */
-  @Input() days: unknown[] = [];
+  readonly days = input<unknown[]>([]);
   /** Normalized events to place. */
-  @Input() events: ReadonlyArray<SchedulerEvent<unknown>> = [];
-  @Input() startHour = 7;
-  @Input() endHour = 21;
+  readonly events = input<ReadonlyArray<SchedulerEvent<unknown>>>([]);
+  readonly startHour = input(7);
+  readonly endHour = input(21);
   /** Pixel height of one hour row. */
-  @Input() slotHeight = 48;
+  readonly slotHeight = input(48);
   /** At/below this duration (minutes) an event uses the compact single-line layout. */
-  @Input() compactMinutes = 30;
+  readonly compactMinutes = input(30);
   /** Minutes the move/resize snaps to. */
-  @Input() snapMinutes = 15;
+  readonly snapMinutes = input(15);
   /** Whether events can be dragged to move. */
-  @Input() draggable = true;
+  readonly draggable = input(true);
   /** Whether events can be resized. */
-  @Input() resizable = true;
+  readonly resizable = input(true);
+  /** Auto-scroll the body to the first event (or `scrollHour`) on load / period change. */
+  readonly autoScroll = input(true);
+  /** When set, scroll to this hour instead of the first event. */
+  readonly scrollHour = input<number>();
 
   /**
    * Emitted on drop/resize-end with a CLONE of the event carrying the proposed new
    * start/end. The view is controlled: it never mutates; the host applies the change.
    */
-  @Output() eventChange = new EventEmitter<SchedulerEvent<unknown>>();
+  readonly eventChange = output<SchedulerEvent<unknown>>();
+
+  /** Emitted on a plain click (no drag) so the shell can open the quick-view / host form. */
+  readonly eventActivate = output<SchedulerEvent<unknown>>();
 
   gesture: Gesture | null = null;
 
-  constructor(@Inject(SCHEDULER_DATE_ADAPTER) public adapter: DateAdapter) {}
+  private readonly scrollEl = viewChild<ElementRef<HTMLElement>>('scrollEl');
 
-  get layout(): VerticalTimeLayout {
-    return layoutVerticalTime(this.days, this.events, this.adapter, this.startHour, this.endHour);
+  /** Period the body was last auto-scrolled for; gates one scroll per period. */
+  private lastScrollKey: string | null = null;
+
+  protected readonly adapter = inject<DateAdapter>(SCHEDULER_DATE_ADAPTER);
+  protected readonly msgs = inject(SCHEDULER_MESSAGES);
+
+  // ---- All-day band geometry + expand/collapse -----------------------------
+
+  /** Lanes shown while the band is collapsed; extra lanes fold behind a "+N more" toggle. */
+  readonly allDayMaxLanes = input(2);
+
+  /** Whether the band is expanded to show every lane. */
+  protected readonly allDayExpanded = signal(false);
+  toggleAllDay(): void { this.allDayExpanded.update((v) => !v); }
+
+  /** Lanes currently rendered (all when expanded, capped when collapsed). */
+  private readonly allDayVisibleLanes = computed(() => {
+    const lanes = this.layout().allDay.lanes;
+    return this.allDayExpanded() ? lanes : Math.min(lanes, this.allDayMaxLanes());
+  });
+  /** Segments in the visible lanes only. */
+  protected readonly allDayVisibleSegments = computed(() =>
+    this.layout().allDay.segments.filter((s) => s.lane < this.allDayVisibleLanes()));
+  /** True when there are more lanes than the collapsed cap (so a toggle is shown). */
+  protected readonly allDayCanToggle = computed(() =>
+    this.layout().allDay.lanes > this.allDayMaxLanes());
+  /** Distinct events hidden in the folded lanes (the "+N more" count). */
+  protected readonly allDayHiddenCount = computed(() => {
+    const vis = this.allDayVisibleLanes();
+    const ids = new Set(this.layout().allDay.segments.filter((s) => s.lane >= vis).map((s) => s.event.id));
+    return ids.size;
+  });
+
+  /** Pixel block-size of the all-day band for the visible lane count (0 → band hidden). */
+  allDayBandHeight(): number {
+    const lanes = this.allDayVisibleLanes();
+    return lanes ? lanes * ALLDAY_LANE_H + 6 : 0;
   }
+  /** A spanning bar's inline position as start/width percentages of the column track. */
+  allDayGeom(seg: AllDaySegment): { left: string; width: string } {
+    const n = this.layout().columns.length || 1;
+    return { left: `${(seg.startCol / n) * 100}%`, width: `${(seg.span / n) * 100}%` };
+  }
+  allDayTop(seg: AllDaySegment): number {
+    return seg.lane * ALLDAY_LANE_H + 3;
+  }
+  allDayAria(e: SchedulerEvent<unknown>): string {
+    return `${e.subject}, ${this.msgs.allDay}`;
+  }
+
+  constructor() {
+    // Auto-scroll only on first render or when the visible PERIOD changes (navigation) —
+    // never on event edits / drag reflow, so the user's manual scroll position is preserved.
+    // The effect may re-run on unrelated change detection (a host can hand us a fresh `days`
+    // array reference every CD), so the scroll itself is gated on the period key *changing* —
+    // otherwise we'd snap the body back and the user could never scroll away.
+    effect(() => {
+      if (!this.autoScroll()) return;
+      const key = this.periodKey();              // track the period signals
+      const el = this.scrollEl()?.nativeElement; // track the view query
+      if (!el || key === this.lastScrollKey) return;
+      this.lastScrollKey = key;
+      untracked(() => this.scrollToFirst(el));
+    });
+  }
+
+  /** Stable identity of the visible period (first day + day count + hour window). */
+  private periodKey(): string {
+    const days = this.days();
+    if (!days.length) return 'empty';
+    const first = this.adapter.toNative(days[0]).getTime();
+    return `${first}:${days.length}:${this.startHour()}:${this.endHour()}:${this.scrollHour()}`;
+  }
+
+  /** Scroll the body so the first event (or `scrollHour`) is near the top. */
+  private scrollToFirst(el: HTMLElement): void {
+    const startHour = this.startHour();
+    const total = (this.endHour() - startHour) * 60;
+    const bodyPx = this.layout().hours.length * this.slotHeight();
+
+    let targetMin: number | null = null;
+    const scrollHour = this.scrollHour();
+    if (scrollHour != null) {
+      targetMin = (scrollHour - startHour) * 60;
+    } else {
+      const tops = this.layout().columns.flatMap((c) => c.events.map((e) => e.top));
+      if (tops.length) targetMin = (Math.min(...tops) / 100) * total;
+    }
+    if (targetMin == null) return;
+
+    // Leave ~half a slot of context above the target.
+    const top = (targetMin / total) * bodyPx - this.slotHeight() * 0.5;
+    requestAnimationFrame(() => el.scrollTo({ top: Math.max(0, top) }));
+  }
+
+  readonly layout = computed<VerticalTimeLayout>(() =>
+    layoutVerticalTime(this.days(), this.events(), this.adapter, this.startHour(), this.endHour()),
+  );
 
   isToday(d: unknown): boolean {
     return this.adapter.isSameDay(d, this.adapter.today());
@@ -182,7 +204,7 @@ export class VerticalTimeViewComponent {
   }
   /** Short events render on one line so the label stays readable in a tiny box. */
   isShort(e: SchedulerEvent<unknown>): boolean {
-    return this.adapter.diffMinutes(e.start, e.end) <= this.compactMinutes;
+    return this.adapter.diffMinutes(e.start, e.end) <= this.compactMinutes();
   }
   widthCss(pe: PositionedEvent): string {
     return `calc(${100 / pe.colCount}% - 4px)`;
@@ -193,8 +215,9 @@ export class VerticalTimeViewComponent {
   nowLineTop(d: unknown): number | null {
     if (!this.isToday(d)) return null;
     const now = this.adapter.now();
-    const total = (this.endHour - this.startHour) * 60;
-    const bodyStart = this.adapter.setTime(d, Math.floor(this.startHour), 0);
+    const startHour = this.startHour();
+    const total = (this.endHour() - startHour) * 60;
+    const bodyStart = this.adapter.setTime(d, Math.floor(startHour), 0);
     const min = this.adapter.diffMinutes(bodyStart, now);
     if (min < 0 || min > total) return null;
     return (min / total) * 100;
@@ -206,7 +229,7 @@ export class VerticalTimeViewComponent {
   // ---- Live geometry (overridden while resizing) ---------------------------
 
   private get totalMinutes(): number {
-    return (this.endHour - this.startHour) * 60;
+    return (this.endHour() - this.startHour()) * 60;
   }
   isActive(e: SchedulerEvent<unknown>): boolean {
     return !!this.gesture?.active && this.gesture.id === e.id;
@@ -233,7 +256,7 @@ export class VerticalTimeViewComponent {
     const offsetX = g.dxDays * g.colWidth;
     // Vertical offset = the time-only shift (the day shift is handled by offsetX).
     const shifted = this.adapter.addDays(g.origStart, g.dxDays);
-    const offsetY = (this.adapter.diffMinutes(shifted, g.newStart) / 60) * this.slotHeight;
+    const offsetY = (this.adapter.diffMinutes(shifted, g.newStart) / 60) * this.slotHeight();
     return `translate(${offsetX}px, ${offsetY}px)`;
   }
   private minToPct(min: number): number {
@@ -250,17 +273,19 @@ export class VerticalTimeViewComponent {
     colEl: HTMLElement,
   ): void {
     if (ev.button !== 0) return;
-    if (mode === 'move' && !this.draggable) return;
-    if (mode !== 'move' && !this.resizable) return;
+    if (mode === 'move' && !this.draggable()) return;
+    if (mode !== 'move' && !this.resizable()) return;
     ev.stopPropagation(); // resize grips must not also start a move
     (ev.target as HTMLElement).setPointerCapture(ev.pointerId);
 
     const e = pe.event;
+    const startHour = this.startHour();
+    const endHour = this.endHour();
     const bodyStart = this.adapter.setTime(
-      e.start, Math.floor(this.startHour), Math.round((this.startHour % 1) * 60),
+      e.start, Math.floor(startHour), Math.round((startHour % 1) * 60),
     );
     const bodyEnd = this.adapter.setTime(
-      e.start, Math.floor(this.endHour), Math.round((this.endHour % 1) * 60),
+      e.start, Math.floor(endHour), Math.round((endHour % 1) * 60),
     );
     this.gesture = {
       mode,
@@ -288,14 +313,15 @@ export class VerticalTimeViewComponent {
     const dx = ev.clientX - g.startX;
     const dy = ev.clientY - g.startY;
     if (!g.active) {
-      if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+      if (!crossedDragThreshold(dx, dy)) return;
       g.active = true;
     }
-    const snapMin = Math.round((dy / this.slotHeight) * 60 / this.snapMinutes) * this.snapMinutes;
-    const minDur = this.snapMinutes;
+    const snapMinutes = this.snapMinutes();
+    const snapMin = snapMinutesFromDeltaY(dy, this.slotHeight(), snapMinutes);
+    const minDur = snapMinutes;
 
     if (g.mode === 'move') {
-      const targetCol = clamp(g.colIndex + Math.round(dx / g.colWidth), 0, this.days.length - 1);
+      const targetCol = columnFromDeltaX(dx, g.colWidth, g.colIndex, this.days().length);
       g.dxDays = targetCol - g.colIndex;
       g.newStart = this.adapter.addMinutes(this.adapter.addDays(g.origStart, g.dxDays), snapMin);
       g.newEnd = this.adapter.addMinutes(g.newStart, g.durationMin);
@@ -323,8 +349,13 @@ export class VerticalTimeViewComponent {
   onGestureEnd(ev: PointerEvent): void {
     const g = this.gesture;
     this.gesture = null;
-    if (!g || !g.active) return;
+    if (!g) return;
     (ev.target as HTMLElement).releasePointerCapture?.(ev.pointerId);
+    if (!g.active) {
+      // No drag threshold crossed → treat as a click/activation.
+      if (g.mode === 'move') this.eventActivate.emit(g.event);
+      return;
+    }
     this.eventChange.emit({ ...g.event, start: g.newStart, end: g.newEnd });
   }
 
@@ -332,12 +363,7 @@ export class VerticalTimeViewComponent {
     this.gesture = null;
   }
 
-  @HostListener('document:keydown.escape')
   onEscape(): void {
     this.gesture = null;
   }
-}
-
-function clamp(n: number, lo: number, hi: number): number {
-  return Math.min(Math.max(n, lo), hi);
 }

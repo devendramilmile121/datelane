@@ -1,0 +1,108 @@
+<div class="dl-header" role="toolbar" [attr.aria-label]="msgs.navigation">
+  <div class="dl-header__nav">
+    <button type="button" class="dl-header__today" (click)="today()">{{ msgs.today }}</button>
+    <button type="button" class="dl-header__step" [attr.aria-label]="msgs.previous" (click)="prev()">‹</button>
+    <button type="button" class="dl-header__step" [attr.aria-label]="msgs.next" (click)="next()">›</button>
+  </div>
+  <span class="dl-header__title">{{ rangeLabel }}</span>
+  @if (switcherViews.length > 1) {
+    <div class="dl-header__views" role="group" [attr.aria-label]="msgs.viewSwitcher">
+      @for (v of switcherViews; track v.type) {
+        <button type="button" class="dl-header__view"
+          [class.dl-header__view--active]="v.type === activeView()"
+          [attr.aria-pressed]="v.type === activeView()"
+          (click)="setActiveView(v.type)">{{ v.label }}</button>
+      }
+    </div>
+  }
+  <ng-content select="[ngsHeader]"></ng-content>
+</div>
+<div class="dl-viewport" role="region" [attr.aria-label]="activeView() + ' view'">
+  @if (isVerticalView) {
+    <dl-vertical-time-view
+      [days]="visibleDays"
+      [events]="normalizedEvents"
+      [startHour]="startHour"
+      [endHour]="endHour"
+      [draggable]="!readonly()"
+      [resizable]="!readonly()"
+      [autoScroll]="autoScroll()"
+      [scrollHour]="scrollHour()"
+      (eventChange)="onViewEventChange($event)"
+      (eventActivate)="onEventActivate($event)">
+    </dl-vertical-time-view>
+  } @else if (activeView() === 'month') {
+    <dl-month-view
+      [viewDate]="viewDate()"
+      [events]="normalizedEvents"
+      [firstDayOfWeek]="monthFirstDayOfWeek"
+      [showWeekend]="monthShowWeekend"
+      [draggable]="!readonly()"
+      [resizable]="!readonly()"
+      (dayNavigate)="onDayNavigate($event)"
+      (eventActivate)="onEventActivate($event)"
+      (eventChange)="onViewEventChange($event)">
+    </dl-month-view>
+  } @else if (activeView() === 'year') {
+    <dl-year-view
+      [viewDate]="viewDate()"
+      [events]="normalizedEvents"
+      [firstDayOfWeek]="monthFirstDayOfWeek"
+      [orientation]="activeDescriptor?.orientation || 'horizontal'"
+      [autoScroll]="autoScroll()"
+      (dayNavigate)="onDayNavigate($event)">
+    </dl-year-view>
+  } @else if (activeView() === 'agenda') {
+    <dl-agenda-view
+      [viewDate]="viewDate()"
+      [events]="normalizedEvents"
+      [agendaDaysCount]="agendaDaysCount()"
+      [hideEmptyAgendaDays]="hideEmptyAgendaDays()"
+      [autoScroll]="autoScroll()"
+      (eventActivate)="onEventActivate($event)">
+    </dl-agenda-view>
+  } @else if (activeView() === 'monthAgenda') {
+    <dl-month-agenda-view
+      [viewDate]="viewDate()"
+      [events]="normalizedEvents"
+      [firstDayOfWeek]="monthFirstDayOfWeek"
+      (dayNavigate)="onDayNavigate($event)"
+      (eventActivate)="onEventActivate($event)">
+    </dl-month-agenda-view>
+  } @else if (isTimelineView) {
+    <dl-timeline-view
+      [viewType]="activeView()"
+      [viewDate]="viewDate()"
+      [events]="normalizedEvents"
+      [rows]="timelineRows"
+      [resourceTitle]="timelineTitle"
+      [firstDayOfWeek]="monthFirstDayOfWeek"
+      [workDays]="activeDescriptor?.workDays"
+      [startHour]="startHour"
+      [endHour]="endHour"
+      [slotCount]="timelineSlotCount"
+      [interval]="activeDescriptor?.interval || 1"
+      [maxLanes]="rowAutoHeight() ? 0 : 3"
+      [autoScroll]="autoScroll()"
+      (eventActivate)="onEventActivate($event)"
+      (cellActivate)="onCellActivate($event)">
+    </dl-timeline-view>
+  } @else {
+    <div class="dl-empty" role="status">
+      <p class="dl-empty__title">{{ msgs.noRenderer(activeView()) }}</p>
+    </div>
+  }
+</div>
+
+@if (quickEvent) {
+  <dl-quick-view
+    [event]="quickEvent"
+    [x]="quickX"
+    [y]="quickY"
+    [readonly]="readonly()"
+    [template]="quickViewTpl()?.template || null"
+    (dismiss)="closeQuickView()"
+    (edit)="onQuickEdit()"
+    (delete)="onQuickDelete()">
+  </dl-quick-view>
+}
