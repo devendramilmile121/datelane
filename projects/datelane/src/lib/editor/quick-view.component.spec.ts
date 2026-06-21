@@ -97,15 +97,15 @@ describe('QuickViewComponent', () => {
     expect([edited, deleted, dismissed]).toEqual([1, 1, 1]);
   });
 
-  it('anchors via CSS custom properties so small screens can re-center it', () => {
+  it('renders a centered dialog with no pointer-anchored inline coordinates', () => {
     const fixture = setup();
-    fixture.componentRef.setInput('x', 120);
-    fixture.componentRef.setInput('y', 240);
     fixture.detectChanges();
     const el = (fixture.nativeElement as HTMLElement).querySelector('.dl-qv') as HTMLElement;
-    expect(el.style.getPropertyValue('--dl-qv-x')).toBe('120px');
-    expect(el.style.getPropertyValue('--dl-qv-y')).toBe('240px');
-    expect(el.style.top).toBe(''); // no inline top → the mobile media query can win
+    expect(el.getAttribute('role')).toBe('dialog');
+    // Centering is purely CSS now — no inline anchor props leak onto the element.
+    expect(el.style.getPropertyValue('--dl-qv-x')).toBe('');
+    expect(el.style.getPropertyValue('--dl-qv-y')).toBe('');
+    expect(el.style.top).toBe('');
   });
 
   it('dismisses on an outside pointerdown but not on an inside one', () => {

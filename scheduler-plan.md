@@ -81,7 +81,7 @@ Everything below is a feature we must cover. Status column is for you to track.
 | `endHour` | short time string | Day, Week, WorkWeek, TL Day/Week/WorkWeek | ☐ |
 | `timeScale` (enable, slotCount) | TimeScaleModel | Day, Week, WorkWeek, TL Day/Week/WorkWeek | ☐ |
 | `showWeekNumber` | boolean | Day, Week, WorkWeek, Month | ☐ |
-| `allowVirtualScrolling` | boolean | Agenda, Timeline views | ☐ |
+| `allowVirtualScrolling` | boolean | Agenda, Timeline views | ☑ (CSS content-visibility) |
 | `headerRows` (year/month/week/date/hour rows) | HeaderRowsModel | Timeline views only | ☐ |
 | `firstDayOfWeek` | number (0=Sun) | Week (and week-based) | ☐ |
 | `orientation` (Horizontal/Vertical) | string | Year, Timeline Year | ☐ |
@@ -90,12 +90,12 @@ Everything below is a feature we must cover. Status column is for you to track.
 
 | Feature | Status |
 |---------|:------:|
-| Header bar: prev/next nav, view switcher (active view highlighted), date-range label, date label → **calendar popup** | ☐ |
-| Click a day cell (Month/Year/MonthAgenda) → navigate to Day view | ☐ |
-| Click date header in Timeline Day/Week/WorkWeek → Agenda view | ☐ |
-| Click date header in Timeline Month → Timeline Day | ☐ |
+| Header bar: prev/next nav, view switcher (active view highlighted), date-range label, date label → **calendar popup** | ☑ |
+| Click a day cell (Month/Year/MonthAgenda) → navigate to Day view | ☑ |
+| Click date header in Timeline Day/Week/WorkWeek → Agenda view | ☑ |
+| Click date header in Timeline Month → Timeline Day | ☑ (also Timeline Year → Timeline Day) |
 | All-day row with expand/collapse (Day/Week/WorkWeek) | ☑ |
-| `+ more` overflow indicator (Month, Timeline views, Timeline Year w/o auto height) | ☐ |
+| `+ more` overflow indicator (Month, Timeline views, Timeline Year w/o auto height) | ☑ |
 | Default editor window for create/edit, with **All-day** toggle | ☐ |
 | New event in Month defaults to all-day; toggling off → 9:00–9:30 default | ☐ |
 | Event popup (Year / Month Agenda) listing events for a clicked day | ☐ |
@@ -110,7 +110,9 @@ These aren't spelled out in the reference doc but are expected of a modern sched
 distinct & better:
 
 - Drag-to-move and resize events (mouse + touch).
-- Recurrence (RFC 5545 RRULE) create/edit/exception handling.
+- Recurrence (RFC 5545 RRULE) create/edit/exception handling. ☑ *expansion + EXDATE + occurrence
+  edit-scope done (`engine/recurrence.ts`, subset: FREQ/INTERVAL/COUNT/UNTIL/BYDAY/BYMONTHDAY);
+  recurrence editor UI + ordinal BYDAY/BYSETPOS still pending.*
 - Tooltip on hover (templated).
 - Keyboard navigation + full ARIA / screen-reader support.
 - Responsive/mobile layout (auto-collapse views, swipe nav).

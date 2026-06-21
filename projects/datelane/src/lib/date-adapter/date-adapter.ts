@@ -13,6 +13,11 @@ export abstract class DateAdapter<D = unknown> {
   abstract now(): D;            // current date AND time (for the now-line)
   abstract clone(date: D): D;
   abstract fromNative(date: Date): D;
+  /** Build an absolute date from calendar parts (local time). `month` is 0-11. */
+  abstract fromParts(
+    year: number, month: number, day: number,
+    hours?: number, minutes?: number, seconds?: number,
+  ): D;
   abstract toNative(date: D): Date;
   abstract isValid(date: D): boolean;
 

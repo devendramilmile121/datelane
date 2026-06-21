@@ -285,6 +285,67 @@ import { SchedulerComponent, dayView, weekView, type FieldMap, type SchedulerVie
       <h2 id="types">Payload types</h2>
       <pre><code>{{ s.types }}</code></pre>
 
+      <!-- ========== RECURRENCE ========== -->
+      <h2 id="recurrence">Recurrence (RRULE)</h2>
+      <p>
+        Map a <code>recurrenceRule</code> field (and optional <code>recurrenceExceptions</code>) in your
+        <code>FieldMap</code> and the scheduler expands each recurring record into per-occurrence events
+        for the <strong>visible range only</strong>. Expansion is built in — no <code>rrule</code> dependency.
+      </p>
+      <pre><code>{{ s.recurrenceData }}</code></pre>
+      <p>Supported RRULE parts (a pragmatic RFC 5545 subset):</p>
+      <table>
+        <thead><tr><th>Part</th><th>Supported</th><th>Notes</th></tr></thead>
+        <tbody>
+          @for (r of recurrenceRows; track r.part) {
+            <tr><td class="t"><code>{{ r.part }}</code></td><td>{{ r.ok }}</td><td>{{ r.notes }}</td></tr>
+          }
+        </tbody>
+      </table>
+      <p>
+        Each occurrence is a normal <code>SchedulerEvent</code> with two extra fields:
+        <code>seriesId</code> (the original record id) and <code>recurrenceId</code> (the occurrence's
+        original start). Editing or deleting an occurrence emits a <code>SchedulerChange</code> whose
+        <code>scope</code> defaults to <code>'occurrence'</code> — your handler decides whether to apply
+        it to the one occurrence, this-and-following, or the whole series.
+      </p>
+      <pre><code>{{ s.recurrenceScope }}</code></pre>
+      <div class="callout">
+        <code>EXDATE</code> dates are matched per day and still count toward <code>COUNT</code> (per spec).
+        Out of scope today: ordinal <code>BYDAY</code> (e.g. <code>2MO</code>), <code>BYSETPOS</code>,
+        <code>BYMONTH</code>, and a recurrence editor UI (the host owns editing).
+      </div>
+
+      <!-- ========== NAVIGATION ========== -->
+      <h2 id="navigation">Navigation &amp; drill-down</h2>
+      <p>The built-in header and views provide navigation out of the box:</p>
+      <table>
+        <thead><tr><th>Interaction</th><th>Result</th></tr></thead>
+        <tbody>
+          @for (n of navRows; track n.act) {
+            <tr><td>{{ n.act }}</td><td>{{ n.res }}</td></tr>
+          }
+        </tbody>
+      </table>
+      <p>
+        Clicking the header <strong>date label</strong> opens a calendar popover (full keyboard support:
+        arrows, <code>Home</code>/<code>End</code>, <code>PageUp</code>/<code>PageDown</code>,
+        <code>Enter</code> to pick, <code>Esc</code> to dismiss) that jumps <code>viewDate</code> while
+        keeping the active view. Every navigation also emits <code>(navigate)</code> and, when the view
+        changes, <code>(viewChange)</code> — observe them to sync your own URL/router state.
+      </p>
+      <pre><code>{{ s.navigation }}</code></pre>
+
+      <!-- ========== VIRTUAL SCROLLING ========== -->
+      <h2 id="virtual">Virtual scrolling</h2>
+      <p>
+        Set <code>allowVirtualScrolling</code> on an Agenda or Timeline view descriptor for long lists /
+        many resource rows. It uses the browser's native CSS <code>content-visibility</code> to skip
+        layout and paint of off-screen rows — zero added dependency, SSR-safe, and no DOM recycling
+        glitches.
+      </p>
+      <pre><code>{{ s.virtual }}</code></pre>
+
       <!-- ========== TEMPLATES ========== -->
       <h2 id="templates">Templates</h2>
       <p>
@@ -500,6 +561,11 @@ export class DeveloperGuideComponent implements OnDestroy {
       { id: 'fieldmap', label: 'FieldMap' },
       { id: 'resources', label: 'Resources & grouping' },
       { id: 'types', label: 'Payload types' },
+    ] },
+    { label: 'Behavior', items: [
+      { id: 'recurrence', label: 'Recurrence (RRULE)' },
+      { id: 'navigation', label: 'Navigation & drill-down' },
+      { id: 'virtual', label: 'Virtual scrolling' },
     ] },
     { label: 'Customize', items: [
       { id: 'templates', label: 'Templates' },
@@ -759,6 +825,25 @@ export class DeveloperGuideComponent implements OnDestroy {
     { name: 'allowMultiple', type: 'boolean?', purpose: 'event may belong to many items' },
   ];
 
+  readonly recurrenceRows = [
+    { part: 'FREQ', ok: 'yes', notes: 'DAILY · WEEKLY · MONTHLY · YEARLY' },
+    { part: 'INTERVAL', ok: 'yes', notes: 'every N periods (default 1)' },
+    { part: 'COUNT', ok: 'yes', notes: 'stop after N occurrences' },
+    { part: 'UNTIL', ok: 'yes', notes: 'stop on/after a date (date-only spans the whole day)' },
+    { part: 'BYDAY', ok: 'yes', notes: 'weekday list (MO,WE,FR); ordinals like 2MO ignored' },
+    { part: 'BYMONTHDAY', ok: 'yes', notes: 'day-of-month list; invalid days (Feb 31) skipped' },
+    { part: 'BYSETPOS / BYMONTH', ok: 'no', notes: 'not yet — planned' },
+  ];
+
+  readonly navRows = [
+    { act: 'Header ‹ / › / Today', res: 'step the period / jump to today (unit follows the active view)' },
+    { act: 'Click the date label', res: 'open the calendar popover to jump to any date' },
+    { act: 'Click a day (Month / Year / Month-Agenda)', res: 'drill into the Day view' },
+    { act: 'Click a header (Timeline Day / Week / WorkWeek)', res: 'drill into the Agenda view' },
+    { act: 'Click a header (Timeline Month / Year)', res: 'drill into Timeline Day' },
+    { act: 'View switcher', res: 'change the active view (driven by [views])' },
+  ];
+
   readonly s = {
     install: `npm install @datelane/core`,
 
@@ -768,8 +853,11 @@ export class DeveloperGuideComponent implements OnDestroy {
 }
 // luxon / moment are OPTIONAL peers (only for those adapters)`,
 
-    styleImport: `/* styles.scss (or angular.json "styles") */
-@import '@datelane/core/styles/scheduler.css';`,
+    styleImport: `/* src/styles.scss — @use the bundled SCSS (tokens + theme + components) */
+@use '@datelane/core/styles/scheduler';
+
+/* …or reference the file directly in angular.json "styles":
+   "node_modules/@datelane/core/styles/scheduler.scss" */`,
 
     bootstrap: `import { bootstrapApplication } from '@angular/platform-browser';
 import { provideScheduler } from '@datelane/core';
@@ -889,6 +977,52 @@ interface NavigateEvent<D = unknown> {
   view: SchedulerViewType;
   action: 'prev' | 'next' | 'today' | 'date';
 }`,
+
+    recurrenceData: `// 1) point the FieldMap at your rule + exception fields
+fieldMap: FieldMap = {
+  id: 'Id', subject: 'Subject', start: 'StartTime', end: 'EndTime',
+  recurrenceRule: 'RecurrenceRule',
+  recurrenceExceptions: 'ExDates',   // optional EXDATE list
+};
+
+// 2) a recurring record — expanded automatically into occurrences
+events = [{
+  Id: 1, Subject: 'Standup',
+  StartTime: new Date(2025, 0, 6, 9, 0),   // first occurrence
+  EndTime:   new Date(2025, 0, 6, 9, 30),
+  RecurrenceRule: 'FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=24',
+  ExDates: '20250120',                     // skip Mon 20 Jan
+}];`,
+
+    recurrenceScope: `onChange(c: SchedulerChange) {
+  // c.scope === 'occurrence' when an expanded occurrence was edited
+  if (c.scope === 'occurrence') {
+    // c.event.seriesId    → the original record id
+    // c.event.recurrenceId → the occurrence's original start
+    this.applyToSingleOccurrence(c.event);
+  } else {
+    this.applyToSeries(c.event);
+  }
+}`,
+
+    navigation: `<dl-scheduler
+  [(activeView)]="view"
+  [(viewDate)]="date"
+  [views]="views"
+  (navigate)="onNavigate($event)"   <!-- { date, view, action } -->
+  (viewChange)="onViewChange($event)">
+</dl-scheduler>
+
+// e.g. keep the URL in sync with the visible period
+onNavigate(n: NavigateEvent) { this.router.navigate([], { queryParams: { d: n.date } }); }
+onViewChange(v: SchedulerViewType) { /* persist the chosen view */ }`,
+
+    virtual: `import { agendaView, timelineMonthView } from '@datelane/core';
+
+views = [
+  agendaView({ allowVirtualScrolling: true }),
+  timelineMonthView({ allowVirtualScrolling: true }),
+];`,
 
     templates: `<dl-scheduler ...>
   <ng-template ngsQuickViewTemplate let-event let-close="close" let-edit="edit">

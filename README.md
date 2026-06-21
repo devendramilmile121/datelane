@@ -4,9 +4,10 @@ A lightweight, fully customizable **Angular scheduler / calendar** — all 12 vi
 (Day, Week, Work Week, Month, Year, Agenda, Month Agenda, and the five Timeline views) — with
 **zero hard runtime dependencies** and a **pluggable date layer** (Native, Luxon, or Moment).
 
-> Status: `0.1.0` pre-release. The 12 views, drag/resize, a host-driven quick-view, resources,
-> and auto-scroll are implemented. Recurrence, a full editor window, and keyboard grid navigation
-> are on the roadmap (see [Limitations](#limitations)).
+> Status: `0.2.0` pre-release. The 12 views, drag/resize, a host-driven quick-view, resources,
+> auto-scroll, **recurrence (RRULE expansion + EXDATE)**, a **date-jump calendar popover**,
+> **header/cell drill-down navigation**, and **virtual scrolling** are implemented. A full editor
+> window and full keyboard grid navigation are on the roadmap (see [Limitations](#limitations)).
 
 ## Highlights
 
@@ -170,7 +171,8 @@ fieldMap: FieldMap = {
   start: 'StartTime',
   end: 'EndTime',
   isAllDay: 'IsAllDay',          // optional
-  recurrenceRule: 'RecurrenceRule', // optional (reserved; engine pending)
+  recurrenceRule: 'RecurrenceRule', // optional — RFC 5545 RRULE, expanded automatically
+  recurrenceExceptions: 'ExDates', // optional — EXDATE list (skipped occurrences)
   resource: 'OwnerId',           // optional — string or string[]
   color: 'Color',                // optional — overrides resource color
   location: 'Location',          // optional — shown in the quick-view
@@ -367,10 +369,12 @@ all five majors.
 
 ## Limitations
 
-- Recurrence (RRULE/EXDATE), a full editor window, and keyboard grid navigation are not yet
-  implemented.
+- Recurrence covers a pragmatic RRULE subset (FREQ/INTERVAL/COUNT/UNTIL/BYDAY/BYMONTHDAY); ordinal
+  `BYDAY` (`2MO`), `BYSETPOS`, `BYMONTH`, and a recurrence **editor UI** are not yet implemented.
+- A full editor window and complete keyboard grid navigation are still on the roadmap.
 - Timeline resource grouping is single-level (no hierarchy yet).
-- Agenda does not yet virtualize long ranges.
+- Virtual scrolling uses CSS `content-visibility` (off-screen rows skip render); it is not a
+  windowed/recycled list.
 - Luxon/Moment adapters lack a shared parity test suite; Moment format-token parity is unverified.
 - No pre-compiled CSS is shipped yet — import the SCSS (see [Styling](#styling)).
 

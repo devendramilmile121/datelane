@@ -4,7 +4,11 @@
     <button type="button" class="dl-header__step" [attr.aria-label]="msgs.previous" (click)="prev()">‹</button>
     <button type="button" class="dl-header__step" [attr.aria-label]="msgs.next" (click)="next()">›</button>
   </div>
-  <span class="dl-header__title">{{ rangeLabel }}</span>
+  <button type="button" class="dl-header__title" #calBtn
+    [attr.aria-label]="msgs.openCalendar"
+    aria-haspopup="dialog"
+    [attr.aria-expanded]="calendarOpen"
+    (click)="toggleCalendar($event)">{{ rangeLabel }}</button>
   @if (switcherViews.length > 1) {
     <div class="dl-header__views" role="group" [attr.aria-label]="msgs.viewSwitcher">
       @for (v of switcherViews; track v.type) {
@@ -59,6 +63,7 @@
       [agendaDaysCount]="agendaDaysCount()"
       [hideEmptyAgendaDays]="hideEmptyAgendaDays()"
       [autoScroll]="autoScroll()"
+      [allowVirtualScrolling]="activeDescriptor?.allowVirtualScrolling ?? false"
       (eventActivate)="onEventActivate($event)">
     </dl-agenda-view>
   } @else if (activeView() === 'monthAgenda') {
@@ -84,8 +89,10 @@
       [interval]="activeDescriptor?.interval || 1"
       [maxLanes]="rowAutoHeight() ? 0 : 3"
       [autoScroll]="autoScroll()"
+      [allowVirtualScrolling]="activeDescriptor?.allowVirtualScrolling ?? false"
       (eventActivate)="onEventActivate($event)"
-      (cellActivate)="onCellActivate($event)">
+      (cellActivate)="onCellActivate($event)"
+      (headerNavigate)="onTimelineHeaderNavigate($event)">
     </dl-timeline-view>
   } @else {
     <div class="dl-empty" role="status">
@@ -94,11 +101,20 @@
   }
 </div>
 
+@if (calendarOpen) {
+  <dl-calendar-popover
+    [value]="viewDate()"
+    [firstDayOfWeek]="monthFirstDayOfWeek"
+    [x]="calX"
+    [y]="calY"
+    (dateSelect)="onCalendarSelect($event)"
+    (dismiss)="closeCalendar()">
+  </dl-calendar-popover>
+}
+
 @if (quickEvent) {
   <dl-quick-view
     [event]="quickEvent"
-    [x]="quickX"
-    [y]="quickY"
     [readonly]="readonly()"
     [template]="quickViewTpl()?.template || null"
     (dismiss)="closeQuickView()"
