@@ -13,6 +13,9 @@ export class MomentDateAdapter extends DateAdapter<Moment> {
   now(): Moment { return moment(); }
   clone(d: Moment): Moment { return d.clone(); }
   fromNative(d: Date): Moment { return moment(d); }
+  fromParts(year: number, month: number, day: number, hours = 0, minutes = 0, seconds = 0): Moment {
+    return moment({ year, month, day, hour: hours, minute: minutes, second: seconds });
+  }
   toNative(d: Moment): Date { return d.toDate(); }
   isValid(d: Moment): boolean { return d.isValid(); }
 

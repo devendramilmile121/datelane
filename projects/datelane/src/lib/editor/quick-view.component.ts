@@ -26,7 +26,6 @@ import { SCHEDULER_MESSAGES } from '../i18n/messages';
   },
   template: `
     <div class="dl-qv" role="dialog" aria-modal="false" [attr.aria-label]="event().subject"
-         [style.--dl-qv-x.px]="x()" [style.--dl-qv-y.px]="y()"
          [style.--dl-event-accent]="event().color || null">
       @if (template(); as tpl) {
         <ng-container [ngTemplateOutlet]="tpl" [ngTemplateOutletContext]="context"></ng-container>
@@ -49,8 +48,6 @@ import { SCHEDULER_MESSAGES } from '../i18n/messages';
 })
 export class QuickViewComponent {
   readonly event = input.required<SchedulerEvent<unknown>>();
-  readonly x = input(0);
-  readonly y = input(0);
   readonly readonly = input(false);
   /** Host override template; when set, replaces the entire default body. */
   readonly template = input<TemplateRef<QuickViewContext> | null>(null);

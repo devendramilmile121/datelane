@@ -72,9 +72,14 @@ export interface SchedulerEvent<D = unknown> {
   start: D;
   end: D;
   isAllDay: boolean;
-  recurrenceRule?: string;
+  recurrenceRule?: string;       // RFC 5545 RRULE
+  recurrenceExceptions?: string; // EXDATE list (comma/newline separated)
   resourceIds?: Array<string | number>;
   color?: string;
+  /** Set on expanded recurrence occurrences: the original series event id. */
+  seriesId?: string | number;
+  /** Set on expanded occurrences: start of the original (non-overridden) slot, for EXDATE/override matching. */
+  recurrenceId?: D;
   raw: Record<string, unknown>;  // original record, for round-tripping
 }
 

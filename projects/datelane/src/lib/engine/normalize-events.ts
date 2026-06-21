@@ -19,6 +19,9 @@ export function normalizeEvents<D>(
       end: adapter.parse(rec[fieldMap.end]),
       isAllDay: fieldMap.isAllDay ? Boolean(rec[fieldMap.isAllDay]) : false,
       recurrenceRule: fieldMap.recurrenceRule ? (rec[fieldMap.recurrenceRule] as string) : undefined,
+      recurrenceExceptions: fieldMap.recurrenceExceptions
+        ? (rec[fieldMap.recurrenceExceptions] as string)
+        : undefined,
       resourceIds,
       color: fieldMap.color ? (rec[fieldMap.color] as string) : undefined,
       raw: rec,

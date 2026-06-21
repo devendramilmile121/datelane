@@ -18,6 +18,9 @@ export class NativeDateAdapter extends DateAdapter<Date> {
   now(): Date { return new Date(); }
   clone(d: Date): Date { return new Date(d.getTime()); }
   fromNative(d: Date): Date { return new Date(d.getTime()); }
+  fromParts(year: number, month: number, day: number, hours = 0, minutes = 0, seconds = 0): Date {
+    return new Date(year, month, day, hours, minutes, seconds, 0);
+  }
   toNative(d: Date): Date { return new Date(d.getTime()); }
   isValid(d: Date): boolean { return d instanceof Date && !isNaN(d.getTime()); }
 

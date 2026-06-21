@@ -17,6 +17,8 @@ export interface SchedulerMessages {
   next: string;
   /** aria-label for the view-switcher button group. */
   viewSwitcher: string;
+  /** aria-label for the header date-label button that opens the calendar picker. */
+  openCalendar: string;
   /** Close button on popovers / quick-view. */
   close: string;
   /** Quick-view edit action. */
@@ -40,6 +42,7 @@ export const DEFAULT_SCHEDULER_MESSAGES: SchedulerMessages = {
   previous: 'Previous',
   next: 'Next',
   viewSwitcher: 'Change view',
+  openCalendar: 'Open calendar to jump to a date',
   close: 'Close',
   edit: 'Edit',
   delete: 'Delete',

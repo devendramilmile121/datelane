@@ -72,8 +72,11 @@ const dom = (day: number, h = 0, m = 0) => {
   template: `
     <p style="font:13px system-ui; color:#5b6470; margin:0 0 12px">
       Day/Week: drag to move + grip-resize. Month: drag bars, click day to drill. Year/MonthAgenda:
-      dots + day drill. Agenda: list. Timeline: resource rows (grouped by owner). Click any event for
-      the built-in quick-view — its Edit button emits <code>(eventEdit)</code> so YOU open your form.
+      dots + day drill. Agenda: list. Timeline: resource rows (grouped by owner) — click a column
+      header to drill in. Click the header <strong>date label</strong> for a calendar to jump dates.
+      The recurring <strong>Yoga</strong> event (Mon/Wed/Fri) is expanded automatically — one Wed is
+      skipped via EXDATE. Click any event for the built-in quick-view — its Edit button emits
+      <code>(eventEdit)</code> so YOU open your form.
       Last: <strong>{{ lastChange || '—' }}</strong>
     </p>
     <label class="theme-picker">
@@ -177,6 +180,8 @@ export class PlaygroundComponent {
     isAllDay: 'allDay',
     resource: 'ownerId',
     location: 'location',
+    recurrenceRule: 'rrule',
+    recurrenceExceptions: 'exdates',
   };
 
   events = [
@@ -187,6 +192,11 @@ export class PlaygroundComponent {
     // Overlapping pair on Wednesday → side-by-side columns.
     { id: 5, subject: 'Client call', start: at(3, 11, 0), end: at(3, 12, 0), color: '#dc2626', ownerId: 2 },
     { id: 6, subject: '1:1 with manager', start: at(4, 15, 0), end: at(4, 16, 0), color: '#0891b2', ownerId: 3 },
+    // Recurring event: MWF at 08:00, expanded automatically into occurrences (skips next Wed).
+    {
+      id: 14, subject: 'Yoga', start: at(0, 8, 0), end: at(0, 8, 45), color: '#16a34a', ownerId: 1,
+      rrule: 'FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=12', exdates: fmtExdate(at(2, 8, 0)),
+    },
     // A multi-day all-day event → renders as one spanning bar in Month.
     { id: 13, subject: 'Offsite', start: dom(9), end: dom(11, 23, 59), color: '#0891b2', allDay: true, ownerId: 1 },
     // Spread across the month so the Month view shows chips + a “+N more”.
@@ -204,6 +214,12 @@ export class PlaygroundComponent {
   onChange(change: SchedulerChange): void {
     const start = change.event.start as Date;
     const end = change.event.end as Date;
+    if (change.scope === 'occurrence') {
+      // A recurring occurrence moved — a real app would split the series here (add an EXDATE +
+      // a standalone event). We just report it so the series isn't silently shifted as a whole.
+      this.lastChange = `occurrence of "${change.event.subject}" → ${fmt(start)} (host splits series)`;
+      return;
+    }
     this.events = this.events.map((e) =>
       e.id === change.event.id ? { ...e, start, end } : e,
     );
@@ -229,6 +245,12 @@ export class PlaygroundComponent {
 
 function fmt(d: Date): string {
   return d.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+}
+
+/** YYYYMMDD EXDATE literal for a given date. */
+function fmtExdate(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
 }
 
 function startOfThisWeek(): Date {

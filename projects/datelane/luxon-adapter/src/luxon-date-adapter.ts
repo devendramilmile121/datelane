@@ -13,6 +13,9 @@ export class LuxonDateAdapter extends DateAdapter<DateTime> {
   now(): DateTime { return DateTime.now(); }
   clone(d: DateTime): DateTime { return DateTime.fromMillis(d.toMillis(), { zone: d.zone }); }
   fromNative(d: Date): DateTime { return DateTime.fromJSDate(d); }
+  fromParts(year: number, month: number, day: number, hours = 0, minutes = 0, seconds = 0): DateTime {
+    return DateTime.local(year, month + 1, day, hours, minutes, seconds);
+  }
   toNative(d: DateTime): Date { return d.toJSDate(); }
   isValid(d: DateTime): boolean { return d.isValid; }
 

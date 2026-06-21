@@ -17,7 +17,7 @@ import { layoutList, ListLayout } from '../engine/list-layout';
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   template: `
-    <div class="dl-ag" role="list">
+    <div class="dl-ag" role="list" [class.dl-ag--virtual]="allowVirtualScrolling()">
       @if (!layout().days.length) {
         <div class="dl-empty" role="status">
           <p class="dl-empty__title">No events</p>
@@ -59,6 +59,8 @@ export class AgendaViewComponent {
   readonly hideEmptyAgendaDays = input(false);
   /** Auto-scroll the first event into view on load / period change. */
   readonly autoScroll = input(true);
+  /** Skip rendering off-screen day rows via CSS content-visibility (cheap virtualization). */
+  readonly allowVirtualScrolling = input(false);
 
   readonly eventActivate = output<SchedulerEvent<unknown>>();
 

@@ -1,6 +1,6 @@
 // scheduler.scss — main entry. Components consume tokens only (no literals).
 // Build emits this to dist; consumers import the compiled CSS once:
-//   @import "@datelane/core/styles/scheduler.css";
+//   @use "@datelane/core/styles/scheduler";
 
 @use "tokens";
 @use "theme";
@@ -13,6 +13,8 @@
   background: var(--dl-bg);
   // RTL-safe: all layout uses logical properties.
   container-type: inline-size;
+  // Positioning context for the centered quick-view popover.
+  position: relative;
   // Shell layout: header (fixed) + viewport (fills remaining block size).
   display: flex;
   flex-direction: column;
@@ -60,7 +62,18 @@
   font-weight: var(--dl-fw-semibold);
   font-variant-numeric: tabular-nums;
   color: var(--dl-text);
+  // Date-label is an activatable button (opens the calendar picker) — strip the UA chrome.
+  appearance: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: var(--dl-space-1) var(--dl-space-2);
+  border-radius: var(--dl-radius-sm);
+  font-family: inherit;
+  font-size: inherit;
 }
+.dl-header__title:hover { background: var(--dl-accent-soft); }
+.dl-header__title:focus-visible { outline: 2px solid var(--dl-focus-ring); outline-offset: 1px; }
 .dl-header__nav {
   display: flex;
   align-items: center;
@@ -858,14 +871,33 @@
   flex: 0 0 var(--dl-tl-colw);
   inline-size: var(--dl-tl-colw);
   padding-block: var(--dl-space-1);
+  // Column header is an activatable button (drills into Agenda / Timeline Day) — reset UA chrome.
+  appearance: none;
+  border: 0;
   border-inline-start: 1px solid var(--dl-border);
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
   font-size: 10px;
   color: var(--dl-text-faint);
   text-align: center;
   white-space: nowrap;
 }
+.dl-tl__col:hover { color: var(--dl-accent); }
+.dl-tl__col:focus-visible { outline: 2px solid var(--dl-focus-ring); outline-offset: -2px; }
 .dl-tl__col--today { color: var(--dl-accent); background: var(--dl-today); }
 .dl-tl__col--weekend { background: var(--dl-weekend); }
+
+// Cheap virtualization: let the browser skip layout/paint of off-screen rows.
+.dl-tl--virtual .dl-tl__row,
+.dl-tl--virtual .dl-tl__rhead {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 36px;
+}
+.dl-ag--virtual .dl-ag__day {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 64px;
+}
 
 // align-items:flex-start so the gutter + column gridlines stop at the last row
 // instead of stretching their borders down through the empty area below.
@@ -932,33 +964,87 @@
 .dl-tl__bar--after { border-start-end-radius: 0; border-end-end-radius: 0; }
 .dl-tl__bartext { min-inline-size: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
-// ---- Quick-view popover --------------------------------------------------
-.dl-qv {
+// ---- Calendar (date-jump) popover ----------------------------------------
+.dl-cal {
   position: fixed;
-  // Anchored at the pointer via custom props (set inline) so a small-screen media query can
-  // re-center it — inline left/top would otherwise win over any stylesheet rule.
-  inset-inline-start: var(--dl-qv-x, 0);
-  top: var(--dl-qv-y, 0);
-  z-index: var(--dl-z-editor);
-  inline-size: 280px;
+  z-index: var(--dl-z-popover);
+  inline-size: 252px;
   max-inline-size: 90vw;
-  padding: var(--dl-space-4) var(--dl-space-5);
+  padding: var(--dl-space-3);
   background: var(--dl-surface-raised);
   border: 1px solid var(--dl-border);
   border-radius: var(--dl-radius-lg);
   box-shadow: var(--dl-shadow-2);
 }
+.dl-cal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block-end: var(--dl-space-2);
+}
+.dl-cal__title {
+  font-weight: var(--dl-fw-semibold);
+  font-size: var(--dl-fs-sm);
+  color: var(--dl-text);
+}
+.dl-cal__step {
+  appearance: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  inline-size: 28px;
+  block-size: 28px;
+  border-radius: var(--dl-radius-sm);
+  color: var(--dl-text-muted);
+  font-size: var(--dl-fs-md);
+}
+.dl-cal__step:hover { background: var(--dl-accent-soft); color: var(--dl-text); }
+.dl-cal__step:focus-visible { outline: 2px solid var(--dl-focus-ring); outline-offset: 1px; }
+.dl-cal__dow,
+.dl-cal__week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.dl-cal__dowcell {
+  text-align: center;
+  font-size: var(--dl-fs-xs);
+  color: var(--dl-text-faint);
+  padding-block: var(--dl-space-1);
+}
+.dl-cal__day {
+  appearance: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  aspect-ratio: 1;
+  border-radius: var(--dl-radius-sm);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--dl-fs-xs);
+  color: var(--dl-text);
+}
+.dl-cal__day:hover { background: var(--dl-accent-soft); }
+.dl-cal__day:focus-visible,
+.dl-cal__day--focus { outline: 2px solid var(--dl-focus-ring); outline-offset: -2px; }
+.dl-cal__day--out { color: var(--dl-text-faint); }
+.dl-cal__day--today { color: var(--dl-accent); font-weight: var(--dl-fw-semibold); }
 
-// Small screens: ignore the pointer anchor and center the quick-view (≈ --dl-bp-sm: 640px).
-@media (max-width: 640px) {
-  .dl-qv {
-    inset-inline-start: 50%;
-    inset-inline-end: auto;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    inline-size: min(360px, calc(100vw - var(--dl-space-7)));
-    box-shadow: var(--dl-shadow-pop);
-  }
+// ---- Quick-view popover --------------------------------------------------
+.dl-qv {
+  // Centered in the scheduler (absolute → the .dl-scheduler host is the positioning context),
+  // so the dialog always opens in the calendar center regardless of where the event was clicked.
+  position: absolute;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
+  transform: translate(-50%, -50%);
+  z-index: var(--dl-z-editor);
+  inline-size: 280px;
+  max-inline-size: min(360px, calc(100% - var(--dl-space-7)));
+  padding: var(--dl-space-4) var(--dl-space-5);
+  background: var(--dl-surface-raised);
+  border: 1px solid var(--dl-border);
+  border-radius: var(--dl-radius-lg);
+  box-shadow: var(--dl-shadow-2);
 }
 .dl-qv__bar {
   position: absolute;

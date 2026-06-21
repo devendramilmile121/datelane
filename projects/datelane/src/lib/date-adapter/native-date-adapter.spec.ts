@@ -30,6 +30,21 @@ export function runAdapterParitySuite(makeAdapter: () => DateAdapter<any>, label
       expect(a.getMonth(feb)).toBe(1);
     });
 
+    it('fromParts builds a local date from calendar parts (month 0-11)', () => {
+      const made = a.fromParts(2025, 2, 9, 14, 30, 0); // 9 Mar 2025, 14:30 local
+      expect(a.getYear(made)).toBe(2025);
+      expect(a.getMonth(made)).toBe(2);
+      expect(a.getDate(made)).toBe(9);
+      expect(a.getHours(made)).toBe(14);
+      expect(a.getMinutes(made)).toBe(30);
+    });
+
+    it('fromParts defaults the time to midnight', () => {
+      const made = a.fromParts(2025, 0, 1);
+      expect(a.getHours(made)).toBe(0);
+      expect(a.getMinutes(made)).toBe(0);
+    });
+
     it('day names start on Sunday', () => {
       expect(a.getDayNames('short')[0].toLowerCase()).toContain('s'); // Sun
       expect(a.getDayNames('long').length).toBe(7);

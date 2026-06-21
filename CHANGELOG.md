@@ -4,6 +4,34 @@ All notable changes to `@datelane/core` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-06-21
+
+Adds recurrence expansion plus navigation and scrolling features. Backward compatible — no breaking
+API changes. Still zero hard runtime dependencies.
+
+### Added
+
+- **Recurrence** — recurring records expand into per-occurrence events for the visible range via a
+  built-in RFC 5545 RRULE subset (`FREQ` DAILY/WEEKLY/MONTHLY/YEARLY, `INTERVAL`, `COUNT`, `UNTIL`,
+  `BYDAY`, `BYMONTHDAY`) with `EXDATE` exceptions. No `rrule` dependency. New `FieldMap`
+  `recurrenceExceptions` mapping; occurrences carry `seriesId` + `recurrenceId`, and CRUD on an
+  occurrence emits `scope: 'occurrence'`.
+- **Calendar popover** — clicking the header date label opens a keyboard-navigable mini-calendar
+  (arrows / Home / End / PageUp / PageDown / Enter / Esc) to jump `viewDate` while keeping the view.
+- **Drill-down navigation** — Timeline Day/Week/WorkWeek headers drill into Agenda; Timeline
+  Month/Year headers drill into Timeline Day (complements the existing day-cell → Day drill).
+- **Virtual scrolling** — `allowVirtualScrolling` on Agenda / Timeline views skips off-screen rows
+  via CSS `content-visibility` (zero-dependency, SSR-safe).
+- `DateAdapter.fromParts(...)` primitive (implemented across Native / Luxon / Moment) for building
+  absolute dates from calendar parts.
+
+### Fixed
+
+- Timeline rows now use a composite track key so a recurring series renders multiple bars in one row
+  without duplicate-key collisions.
+- Long-running open-ended DAILY/WEEKLY series viewed far from their start now fast-forward to the
+  visible window instead of exhausting the iteration cap and rendering nothing.
+
 ## [0.1.0] - 2026-06-07
 
 First public pre-release. All 12 view modes render; the core ships with zero hard runtime

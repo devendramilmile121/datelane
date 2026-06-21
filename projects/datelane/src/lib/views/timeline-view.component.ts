@@ -25,7 +25,8 @@ const ROW_PAD = 6;     // px vertical padding inside a row
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   template: `
-    <div class="dl-tl" role="grid" [style.--dl-tl-cols]="layout().columns.length">
+    <div class="dl-tl" role="grid" [class.dl-tl--virtual]="allowVirtualScrolling()"
+      [style.--dl-tl-cols]="layout().columns.length">
       <!-- Header: corner + two stacked bands (majors, then columns). -->
       <div class="dl-tl__head">
         <div class="dl-tl__corner" role="presentation">
@@ -39,10 +40,12 @@ const ROW_PAD = 6;     // px vertical padding inside a row
           </div>
           <div class="dl-tl__cols" role="row">
             @for (col of layout().columns; track $index) {
-              <div class="dl-tl__col"
+              <button type="button" class="dl-tl__col"
                 [class.dl-tl__col--today]="col.isToday"
                 [class.dl-tl__col--weekend]="col.isWeekend"
-                role="columnheader">{{ col.label }}</div>
+                role="columnheader"
+                [attr.aria-label]="headerLabel(col)"
+                (click)="headerNavigate.emit(col.start)">{{ col.label }}</button>
             }
           </div>
         </div>
@@ -82,7 +85,8 @@ const ROW_PAD = 6;     // px vertical padding inside a row
                 </div>
               }
               <!-- positioned event bars -->
-              @for (bar of row.bars; track bar.event.id) {
+              <!-- Composite key: a recurring series puts several same-id bars in one row. -->
+              @for (bar of row.bars; track bar.event.id + ':' + bar.left) {
                 <div class="dl-tl__bar"
                   [class.dl-tl__bar--before]="bar.continuesBefore"
                   [class.dl-tl__bar--after]="bar.continuesAfter"
@@ -120,9 +124,13 @@ export class TimelineViewComponent {
   readonly maxLanes = input(0);
   /** Auto-scroll horizontally to the first event on load / period change. */
   readonly autoScroll = input(true);
+  /** Skip rendering off-screen resource rows via CSS content-visibility (cheap virtualization). */
+  readonly allowVirtualScrolling = input(false);
 
   readonly eventActivate = output<SchedulerEvent<unknown>>();
   readonly cellActivate = output<{ date: unknown; resourceId?: string | number }>();
+  /** A column header was activated → drill in (shell decides the target view). */
+  readonly headerNavigate = output<unknown>();
 
   protected readonly LANE_H = LANE_H;
   protected readonly ROW_PAD = ROW_PAD;
@@ -215,5 +223,8 @@ export class TimelineViewComponent {
   cellLabel(col: { start: unknown }, row: TimelineRowInput): string {
     const when = this.adapter.format(col.start, 'EEE, MMM d');
     return row.label ? `${when}, ${row.label}` : when;
+  }
+  headerLabel(col: { start: unknown; label: string }): string {
+    return `${col.label}, ${this.adapter.format(col.start, 'EEEE, dd MMMM yyyy')}`;
   }
 }

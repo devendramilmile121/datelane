@@ -234,3 +234,53 @@ describe('SchedulerComponent — period navigation', () => {
     expect(host.querySelector('.dl-header__step')?.getAttribute('aria-label')).toBe('Précédent');
   });
 });
+
+describe('SchedulerComponent — calendar popover + header navigation', () => {
+  it('toggles the date-jump calendar popover when the date label is clicked', () => {
+    const fixture = setup();
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    const title = host.querySelector<HTMLButtonElement>('.dl-header__title')!;
+    expect(host.querySelector('dl-calendar-popover')).toBeNull();
+    expect(title.getAttribute('aria-expanded')).toBe('false');
+
+    title.click();
+    fixture.detectChanges();
+    expect(host.querySelector('dl-calendar-popover')).not.toBeNull();
+    expect(title.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('onCalendarSelect jumps viewDate, emits a date navigate, and closes the popover', () => {
+    const fixture = setup();
+    fixture.componentInstance.toggleCalendar(new Event('click'));
+    let nav: { action?: string; view?: string } | null = null;
+    fixture.componentInstance.navigate.subscribe((n) => (nav = n));
+    const target = new Date(2026, 7, 3);
+
+    fixture.componentInstance.onCalendarSelect(target);
+    expect(fixture.componentInstance.viewDate()).toBe(target);
+    expect(fixture.componentInstance.activeView()).toBe('week'); // active view is preserved
+    expect(nav!).toMatchObject({ action: 'date', view: 'week' });
+    expect(fixture.componentInstance.calendarOpen).toBe(false);
+  });
+
+  it('timeline Day/Week/WorkWeek header navigation drills into Agenda', () => {
+    const fixture = setup();
+    fixture.componentRef.setInput('activeView', 'timelineWeek');
+    let viewChanged: string | null = null;
+    fixture.componentInstance.viewChange.subscribe((v) => (viewChanged = v));
+
+    const d = new Date(2026, 5, 18);
+    fixture.componentInstance.onTimelineHeaderNavigate(d);
+    expect(fixture.componentInstance.activeView()).toBe('agenda');
+    expect(fixture.componentInstance.viewDate()).toBe(d);
+    expect(viewChanged!).toBe('agenda');
+  });
+
+  it('timeline Month/Year header navigation drills into Timeline Day', () => {
+    const fixture = setup();
+    fixture.componentRef.setInput('activeView', 'timelineMonth');
+    fixture.componentInstance.onTimelineHeaderNavigate(new Date(2026, 5, 18));
+    expect(fixture.componentInstance.activeView()).toBe('timelineDay');
+  });
+});
