@@ -1,13 +1,44 @@
 # @datelane/core
 
-A lightweight, fully customizable **Angular scheduler / calendar** — all 12 view modes
-(Day, Week, Work Week, Month, Year, Agenda, Month Agenda, and the five Timeline views) — with
-**zero hard runtime dependencies** and a **pluggable date layer** (Native, Luxon, or Moment).
+[![npm version](https://img.shields.io/npm/v/@datelane/core.svg)](https://www.npmjs.com/package/@datelane/core)
+[![npm downloads](https://img.shields.io/npm/dw/@datelane/core.svg)](https://www.npmjs.com/package/@datelane/core)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/@datelane/core.svg?label=gzip)](https://bundlephobia.com/package/@datelane/core)
+[![zero deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen.svg)](https://www.npmjs.com/package/@datelane/core?activeTab=dependencies)
+[![Angular](https://img.shields.io/badge/Angular-18%20%E2%80%93%2022-dd0031.svg)](#angular-support)
+[![CI](https://github.com/devendramilmile121/datelane/actions/workflows/ci.yml/badge.svg)](https://github.com/devendramilmile121/datelane/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/@datelane/core.svg)](LICENSE)
+
+**The free, zero-dependency Angular scheduler.** All 12 view modes — Day, Week, Work Week, Month,
+Year, Agenda, Month Agenda, and 5 Timeline views — with drag & resize, recurrence, resources,
+dark mode, and RTL. **~38 KB gzipped, no runtime dependencies, MIT-licensed**, and a pluggable date
+layer (Native / Luxon / Moment).
+
+**[▶ Live demo](https://devendramilmile121.github.io/datelane/)** · [Quick start](#quick-start-standalone-native-dates) · [Views](#views) · [Why datelane?](#why-datelane)
+
+<p align="center">
+  <a href="https://devendramilmile121.github.io/datelane/">
+    <img src="docs/hero.png" alt="datelane Angular scheduler — week view with colored events, all-day band, and now-line" width="900">
+  </a>
+</p>
 
 > Status: `0.2.0` pre-release. The 12 views, drag/resize, a host-driven quick-view, resources,
 > auto-scroll, **recurrence (RRULE expansion + EXDATE)**, a **date-jump calendar popover**,
 > **header/cell drill-down navigation**, and **virtual scrolling** are implemented. A full editor
 > window and full keyboard grid navigation are on the roadmap (see [Limitations](#limitations)).
+
+## Why datelane?
+
+| | datelane | FullCalendar | Syncfusion | DHTMLX |
+|---|:---:|:---:|:---:|:---:|
+| License | **MIT (free)** | MIT + paid | Commercial | Commercial |
+| Runtime deps | **0** | preact | many | many |
+| Bundle (gzip) | **~38 KB** | ~90 KB+ | large | large |
+| Angular standalone + signals | **✅ native** | wrapper | ✅ | wrapper |
+| Date library | **pluggable** | built-in | built-in | built-in |
+| Timeline + resources | **✅** | paid | ✅ | ✅ |
+| Bring-your-own editor | **✅** | partial | built-in | built-in |
+
+Built for modern Angular (18+, standalone, signal-first). You pay only for the views you import.
 
 ## Highlights
 
@@ -34,6 +65,15 @@ npm i luxon      # or: npm i moment
 
 Peer deps: `@angular/core` and `@angular/common` `>=18.0.0 <23.0.0`. `luxon`/`moment` are
 **optional** peers.
+
+Or scaffold it in one step:
+
+```bash
+ng add @datelane/core   # registers the stylesheet and prints setup steps
+```
+
+**Try it live:** [interactive demo](https://devendramilmile121.github.io/datelane/) ·
+[edit on StackBlitz](https://stackblitz.com/github/devendramilmile121/datelane).
 
 ## Quick start (standalone, Native dates)
 

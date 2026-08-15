@@ -76,7 +76,7 @@ export class AgendaViewComponent {
       untracked(() => {
         requestAnimationFrame(() => {
           const first = this.host.nativeElement.querySelector('.dl-ag__event');
-          first?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+          first?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
         });
       });
     });

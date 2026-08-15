@@ -1,8 +1,8 @@
 <div class="dl-vt" role="grid" [attr.aria-rowcount]="layout().hours.length">
   <!-- Fixed header row: time-gutter corner + one cell per day. -->
-  <div class="dl-vt__headrow">
+  <div class="dl-vt__headrow" role="presentation">
     <div class="dl-vt__corner" role="presentation"></div>
-    <div class="dl-vt__heads">
+    <div class="dl-vt__heads" role="row">
       @for (col of layout().columns; track trackByTime(col.date)) {
         <div class="dl-vt__head" role="columnheader" [class.dl-vt__head--today]="isToday(col.date)">
           <span class="dl-vt__dow">{{ dayName(col.date) }}</span>
@@ -25,7 +25,7 @@
           </button>
         }
       </div>
-      <div class="dl-vt__allday-cols" [style.block-size.px]="allDayBandHeight()">
+      <div class="dl-vt__allday-cols" role="gridcell" [style.block-size.px]="allDayBandHeight()">
         @for (seg of allDayVisibleSegments(); track seg.event.id + ':' + seg.startCol) {
           @if (allDayGeom(seg); as g) {
             <button
@@ -49,9 +49,9 @@
   }
 
   <!-- Scrollable body: time gutter + day columns scroll together vertically. -->
-  <div #scrollEl class="dl-vt__scroll">
-    <div class="dl-vt__grid">
-      <div class="dl-vt__gutter">
+  <div #scrollEl class="dl-vt__scroll" role="presentation">
+    <div class="dl-vt__grid" role="presentation">
+      <div class="dl-vt__gutter" role="presentation">
         @for (h of layout().hours; track h) {
           <div class="dl-vt__hour" [style.height.px]="slotHeight()">
             <span class="dl-vt__time">{{ hourLabel(h) }}</span>
@@ -63,7 +63,7 @@
         </div>
       </div>
 
-      <div class="dl-vt__body">
+      <div class="dl-vt__body" role="row">
         @for (col of layout().columns; track trackByTime(col.date); let ci = $index) {
           <div #colEl class="dl-vt__col" role="gridcell" [class.dl-vt__col--today]="isToday(col.date)">
             @for (h of layout().hours; track h) {

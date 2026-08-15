@@ -17,10 +17,10 @@ import { layoutYear, YearLayout } from '../engine/year-layout';
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   template: `
-    <div class="dl-yr" [class.dl-yr--vertical]="orientation() === 'vertical'" role="grid">
+    <div class="dl-yr" [class.dl-yr--vertical]="orientation() === 'vertical'">
       @for (mo of layout().months; track mo.month) {
-        <section class="dl-yr__month" role="group" [attr.aria-label]="monthName(mo.month)">
-          <header class="dl-yr__mhead">{{ monthName(mo.month) }}</header>
+        <div class="dl-yr__month" role="grid" [attr.aria-label]="monthName(mo.month)">
+          <div class="dl-yr__mhead">{{ monthName(mo.month) }}</div>
           <div class="dl-yr__dow">
             @for (i of weekdayCols; track i) {
               <span class="dl-yr__dowcell">{{ weekdayLabel(i) }}</span>
@@ -44,7 +44,7 @@ import { layoutYear, YearLayout } from '../engine/year-layout';
               }
             </div>
           }
-        </section>
+        </div>
       }
     </div>
   `,
@@ -70,7 +70,7 @@ export class YearViewComponent {
       untracked(() => {
         requestAnimationFrame(() => {
           const first = this.host.nativeElement.querySelector('.dl-yr__day--has');
-          first?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+          first?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
         });
       });
     });

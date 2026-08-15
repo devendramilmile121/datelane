@@ -35,7 +35,7 @@ interface MiniDay { date: unknown; inMonth: boolean; isToday: boolean; isWeekend
                 [class.dl-ma__day--today]="day.isToday"
                 [class.dl-ma__day--weekend]="day.isWeekend"
                 [class.dl-ma__day--sel]="isSelected(day.date)"
-                [attr.aria-pressed]="isSelected(day.date)"
+                [attr.aria-selected]="isSelected(day.date)"
                 [attr.aria-label]="dayLabel(day.date, day.count)"
                 (click)="select(day.date)"
                 (dblclick)="dayNavigate.emit(day.date)">
@@ -47,13 +47,13 @@ interface MiniDay { date: unknown; inMonth: boolean; isToday: boolean; isWeekend
         }
       </div>
 
-      <div class="dl-ma__list" role="list" [attr.aria-label]="selectedLabel()">
-        <header class="dl-ma__lhead">{{ selectedLabel() }}</header>
+      <div class="dl-ma__list" role="group" [attr.aria-label]="selectedLabel()">
+        <div class="dl-ma__lhead">{{ selectedLabel() }}</div>
         @if (!selectedEvents().length) {
           <p class="dl-ma__none">No events</p>
         }
         @for (ev of selectedEvents(); track ev.id) {
-          <button type="button" class="dl-ma__event" role="listitem"
+          <button type="button" class="dl-ma__event"
             [style.--dl-event-accent]="ev.color || null"
             [attr.aria-label]="ariaFor(ev)"
             (click)="eventActivate.emit(ev)">

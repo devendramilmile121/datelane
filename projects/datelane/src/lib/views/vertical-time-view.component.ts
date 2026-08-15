@@ -174,7 +174,7 @@ export class VerticalTimeViewComponent {
 
     // Leave ~half a slot of context above the target.
     const top = (targetMin / total) * bodyPx - this.slotHeight() * 0.5;
-    requestAnimationFrame(() => el.scrollTo({ top: Math.max(0, top) }));
+    requestAnimationFrame(() => el.scrollTo?.({ top: Math.max(0, top) }));
   }
 
   readonly layout = computed<VerticalTimeLayout>(() =>
