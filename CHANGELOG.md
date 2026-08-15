@@ -4,6 +4,31 @@ All notable changes to `@datelane/core` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] - 2026-08-15
+
+Developer-experience and release-quality groundwork (Milestone A) plus discoverability polish.
+No public API changes.
+
+### Added
+
+- **Package quality gate** (`npm run check:package`): `publint` + `arethetypeswrong` type-resolution
+  check + a gzip **bundle-size budget** (`scripts/check-size.mjs`), wired into CI after the build.
+- **Accessibility test harness**: `axe-core` assertions via `src/lib/testing/axe.ts`, with a11y
+  specs for the shell (every view + both popovers) and the month view. Runs under `npm test`.
+- **`ng add @datelane/core` schematic**: registers the scheduler stylesheet in the target project's
+  build `styles` and prints setup guidance.
+- **README + npm discoverability**: badges (version, downloads, gzip size, CI, license), a
+  "Why datelane?" comparison, a hero screenshot, live-demo / StackBlitz links, and an expanded
+  keyword set.
+
+### Fixed
+
+- **ARIA grid structure** across every view: added missing `role="row"`/`rowgroup` wrappers and
+  flattened structural containers so `columnheader`/`gridcell` elements have valid parents
+  (vertical-time, month, timeline, year, month-agenda). Timeline column headers are no longer
+  `<button role="columnheader">` (invalid) and gained keyboard activation; month-agenda day cells
+  use `aria-selected` instead of `aria-pressed`.
+
 ## [0.2.0] - 2026-06-21
 
 Adds recurrence expansion plus navigation and scrolling features. Backward compatible — no breaking

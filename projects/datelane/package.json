@@ -1,14 +1,22 @@
 {
   "name": "@datelane/core",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Lightweight, customizable, dependency-free Angular scheduler/calendar with pluggable date adapters (Native/Luxon/Moment).",
   "license": "MIT",
-  "keywords": ["angular", "scheduler", "calendar", "timeline", "agenda", "events", "luxon", "moment"],
+  "keywords": [
+    "angular", "scheduler", "calendar", "timeline", "agenda", "events", "appointments",
+    "resource-scheduling", "gantt", "day-view", "week-view", "month-view", "year-view",
+    "recurrence", "rrule", "drag-and-drop", "standalone", "signals", "angular-scheduler",
+    "angular-calendar", "fullcalendar-alternative", "syncfusion-alternative", "lightweight",
+    "zero-dependency", "date-adapter", "luxon", "moment", "rtl", "dark-mode"
+  ],
   "repository": { "type": "git", "url": "git+https://github.com/devendramilmile121/datelane.git" },
   "homepage": "https://github.com/devendramilmile121/datelane#readme",
   "bugs": { "url": "https://github.com/devendramilmile121/datelane/issues" },
   "sideEffects": false,
   "publishConfig": { "access": "public" },
+  "schematics": "./schematics/collection.json",
+  "ng-add": { "save": "dependencies" },
   "exports": {
     "./styles/*": "./styles/*",
     "./styles/scheduler": "./styles/scheduler.scss"

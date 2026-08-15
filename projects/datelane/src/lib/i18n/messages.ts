@@ -27,6 +27,8 @@ export interface SchedulerMessages {
   delete: string;
   /** All-day marker in the quick-view time line. */
   allDay: string;
+  /** aria-label for the events-overlay gridcell in month / timeline rows. */
+  eventsLabel: string;
   /** Builds the "+N more" overflow label for a hidden-event count. */
   moreEvents: (count: number) => string;
   /** Collapses an expanded overflow (e.g. the all-day band). */
@@ -47,6 +49,7 @@ export const DEFAULT_SCHEDULER_MESSAGES: SchedulerMessages = {
   edit: 'Edit',
   delete: 'Delete',
   allDay: 'All day',
+  eventsLabel: 'Events',
   moreEvents: (count) => `+${count} more`,
   showLess: 'Show less',
   noRenderer: (view) => `No renderer for “${view}” yet`,

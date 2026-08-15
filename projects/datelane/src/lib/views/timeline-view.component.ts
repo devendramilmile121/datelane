@@ -15,6 +15,7 @@ import {
   layoutHorizontalTime, HorizontalTimeLayout, TimelineRowInput,
 } from '../engine/horizontal-time-layout';
 import { buildTimelineColumns, TimelineColumnOptions } from '../engine/timeline-columns';
+import { SCHEDULER_MESSAGES } from '../i18n/messages';
 
 const LANE_H = 24;     // px per lane (matches CSS var)
 const ROW_PAD = 6;     // px vertical padding inside a row
@@ -28,11 +29,11 @@ const ROW_PAD = 6;     // px vertical padding inside a row
     <div class="dl-tl" role="grid" [class.dl-tl--virtual]="allowVirtualScrolling()"
       [style.--dl-tl-cols]="layout().columns.length">
       <!-- Header: corner + two stacked bands (majors, then columns). -->
-      <div class="dl-tl__head">
+      <div class="dl-tl__head" role="presentation">
         <div class="dl-tl__corner" role="presentation">
           @if (showResourceGutter) { <span>{{ resourceTitle() }}</span> }
         </div>
-        <div class="dl-tl__headcols">
+        <div class="dl-tl__headcols" role="presentation">
           <div class="dl-tl__majors" role="row">
             @for (mg of majorGroups(); track mg.key) {
               <div class="dl-tl__major" [style.flex-grow]="mg.span" role="columnheader">{{ mg.label }}</div>
@@ -40,21 +41,24 @@ const ROW_PAD = 6;     // px vertical padding inside a row
           </div>
           <div class="dl-tl__cols" role="row">
             @for (col of layout().columns; track $index) {
-              <button type="button" class="dl-tl__col"
+              <div class="dl-tl__col"
                 [class.dl-tl__col--today]="col.isToday"
                 [class.dl-tl__col--weekend]="col.isWeekend"
                 role="columnheader"
+                tabindex="0"
                 [attr.aria-label]="headerLabel(col)"
-                (click)="headerNavigate.emit(col.start)">{{ col.label }}</button>
+                (click)="headerNavigate.emit(col.start)"
+                (keydown.enter)="headerNavigate.emit(col.start)"
+                (keydown.space)="headerNavigate.emit(col.start); $event.preventDefault()">{{ col.label }}</div>
             }
           </div>
         </div>
       </div>
 
       <!-- Body: resource gutter + scrolling rows. -->
-      <div #scrollEl class="dl-tl__body">
+      <div #scrollEl class="dl-tl__body" role="presentation">
         @if (showResourceGutter) {
-          <div class="dl-tl__gutter">
+          <div class="dl-tl__gutter" role="presentation">
             @for (row of layout().rows; track $index) {
               <div class="dl-tl__rhead" [style.block-size.px]="rowHeight(row)"
                 [style.padding-inline-start.px]="(row.depth || 0) * 14 + 8">
@@ -65,7 +69,7 @@ const ROW_PAD = 6;     // px vertical padding inside a row
           </div>
         }
 
-        <div class="dl-tl__rows">
+        <div class="dl-tl__rows" role="presentation">
           @for (row of layout().rows; track $index; let ri = $index) {
             <div class="dl-tl__row" role="row" [style.block-size.px]="rowHeight(row)">
               <!-- gridline cells (also the click target for empty-slot create) -->
@@ -84,8 +88,9 @@ const ROW_PAD = 6;     // px vertical padding inside a row
                   }
                 </div>
               }
-              <!-- positioned event bars -->
-              <!-- Composite key: a recurring series puts several same-id bars in one row. -->
+              <!-- positioned event bars — wrapped in a display:contents gridcell so the row owns
+                   only cells (ARIA) while the bars keep the row as their positioning context (CSS). -->
+              <div class="dl-tl__bars" role="gridcell" style="display: contents" [attr.aria-label]="msgs.eventsLabel">
               @for (bar of row.bars; track bar.event.id + ':' + bar.left) {
                 <div class="dl-tl__bar"
                   [class.dl-tl__bar--before]="bar.continuesBefore"
@@ -100,6 +105,7 @@ const ROW_PAD = 6;     // px vertical padding inside a row
                   <span class="dl-tl__bartext">{{ bar.event.subject }}</span>
                 </div>
               }
+              </div>
             </div>
           }
         </div>
@@ -138,6 +144,7 @@ export class TimelineViewComponent {
   private readonly scrollEl = viewChild<ElementRef<HTMLElement>>('scrollEl');
 
   protected readonly adapter = inject<DateAdapter>(SCHEDULER_DATE_ADAPTER);
+  protected readonly msgs = inject(SCHEDULER_MESSAGES);
 
   constructor() {
     // Auto-scroll only on first render or when the period/view changes — not on event churn.
@@ -161,7 +168,7 @@ export class TimelineViewComponent {
       const gutter = this.showResourceGutter ? this.gutterWidth(el) : 0;
       const track = el.scrollWidth - gutter;
       const target = (minLeft / 100) * track - this.colWidthPx(el);
-      el.scrollTo({ left: Math.max(0, target) });
+      el.scrollTo?.({ left: Math.max(0, target) });
     });
   }
 
